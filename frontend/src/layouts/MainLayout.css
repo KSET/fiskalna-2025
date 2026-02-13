@@ -24,3 +24,22 @@
     width: 100%;
   }
 }
+
+@media print {
+  .main-layout {
+    display: block;
+    min-height: auto;
+  }
+
+  .main-layout > .sidebar {
+    display: none !important;
+  }
+
+  .main-content {
+    margin-left: 0;
+    width: 100%;
+    padding: 0;
+    background-color: white;
+    overflow: visible;
+  }
+}

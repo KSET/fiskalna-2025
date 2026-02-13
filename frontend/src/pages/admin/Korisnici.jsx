@@ -94,98 +94,115 @@ export default function Korisnici() {
     <div className="page-container">
       <h1>Upravljanje Korisnicima</h1>
 
-      {!showNewUserForm ? (
-        <button 
-          onClick={() => setShowNewUserForm(true)}
-          style={{
-            background: '#667eea',
-            color: 'white',
-            border: 'none',
-            padding: '10px 20px',
-            borderRadius: '5px',
-            cursor: 'pointer',
-            marginBottom: '20px'
-          }}
-        >
-          + Dodaj novog korisnika
-        </button>
-      ) : (
-        <div style={{
-          background: '#f8f9fa',
-          padding: '20px',
+      <button 
+        onClick={() => setShowNewUserForm(true)}
+        style={{
+          background: '#667eea',
+          color: 'white',
+          border: 'none',
+          padding: '10px 20px',
           borderRadius: '5px',
-          marginBottom: '20px',
-          border: '1px solid #ddd'
+          cursor: 'pointer',
+          marginBottom: '20px'
+        }}
+      >
+        + Dodaj novog korisnika
+      </button>
+
+      {showNewUserForm && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
         }}>
-          <h3>Kreiraj novog korisnika</h3>
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '15px' }}>
-            <input
-              type="email"
-              placeholder="Email"
-              value={newUser.email}
-              onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-              style={{
-                padding: '8px',
-                borderRadius: '4px',
-                border: '1px solid #ccc',
-                flex: '1',
-                minWidth: '200px'
-              }}
-            />
-            <input
-              type="text"
-              placeholder="Ime"
-              value={newUser.name}
-              onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-              style={{
-                padding: '8px',
-                borderRadius: '4px',
-                border: '1px solid #ccc',
-                flex: '1',
-                minWidth: '200px'
-              }}
-            />
-            <select
-              value={newUser.role}
-              onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-              style={{
-                padding: '8px',
-                borderRadius: '4px',
-                border: '1px solid #ccc'
-              }}
-            >
-              <option value="GUEST">GUEST</option>
-              <option value="USER">USER</option>
-              <option value="ADMIN">ADMIN</option>
-            </select>
-          </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button
-              onClick={handleCreateUser}
-              style={{
-                background: '#28a745',
-                color: 'white',
-                border: 'none',
-                padding: '10px 20px',
-                borderRadius: '5px',
-                cursor: 'pointer'
-              }}
-            >
-              Kreiraj
-            </button>
-            <button
-              onClick={() => setShowNewUserForm(false)}
-              style={{
-                background: '#6c757d',
-                color: 'white',
-                border: 'none',
-                padding: '10px 20px',
-                borderRadius: '5px',
-                cursor: 'pointer'
-              }}
-            >
-              Otkaži
-            </button>
+          <div style={{
+            background: 'white',
+            padding: '30px',
+            borderRadius: '10px',
+            boxShadow: '0 2px 20px rgba(0,0,0,0.3)',
+            width: '90%',
+            maxWidth: '400px'
+          }}>
+            <h3 style={{marginTop: 0, marginBottom: '20px', color: '#333'}}>Kreiraj novog korisnika</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '20px' }}>
+              <input
+                type="email"
+                placeholder="Email"
+                value={newUser.email}
+                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                style={{
+                  padding: '10px',
+                  borderRadius: '4px',
+                  border: '1px solid #ccc',
+                  fontSize: '14px'
+                }}
+              />
+              <input
+                type="text"
+                placeholder="Ime"
+                value={newUser.name}
+                onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                style={{
+                  padding: '10px',
+                  borderRadius: '4px',
+                  border: '1px solid #ccc',
+                  fontSize: '14px'
+                }}
+              />
+              <select
+                value={newUser.role}
+                onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                style={{
+                  padding: '10px',
+                  borderRadius: '4px',
+                  border: '1px solid #ccc',
+                  fontSize: '14px'
+                }}
+              >
+                <option value="GUEST">GUEST</option>
+                <option value="USER">USER</option>
+                <option value="ADMIN">ADMIN</option>
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={handleCreateUser}
+                style={{
+                  background: '#28a745',
+                  color: 'white',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '5px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600'
+                }}
+              >
+                Kreiraj
+              </button>
+              <button
+                onClick={() => setShowNewUserForm(false)}
+                style={{
+                  background: '#6c757d',
+                  color: 'white',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '5px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600'
+                }}
+              >
+                Otkaži
+              </button>
+            </div>
           </div>
         </div>
       )}

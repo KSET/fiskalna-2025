@@ -219,7 +219,10 @@ app.put("/api/receipts/:id", requireAuth, async (req, res) => {
 app.get("/api/transactions", requireAuth, async (req, res) => {
   try {
     const transactions = await prisma.transaction.findMany({
-      include: { receipt: true, user: { select: { id: true, name: true, email: true } } },
+      include: { 
+        receipt: { include: { items: { include: { article: true } } } },
+        user: { select: { id: true, name: true, email: true } } 
+      },
       orderBy: { createdAt: "desc" },
     });
     res.json(transactions);
