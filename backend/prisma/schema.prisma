@@ -8,9 +8,9 @@ generator client {
 }
 
 enum UserRole {
-  ADMIN
+  X
   USER
-  GUEST
+  ADMIN
 }
 
 model User {

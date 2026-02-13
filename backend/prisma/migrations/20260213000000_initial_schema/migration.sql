@@ -1,7 +1,20 @@
--- AlterTable
-ALTER TABLE "User" ALTER COLUMN "updatedAt" DROP DEFAULT;
+-- CreateEnum
+CREATE TYPE "UserRole" AS ENUM ('X', 'USER', 'ADMIN');
 
--- CreateTable
+-- CreateTable User
+CREATE TABLE "User" (
+    "id" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "name" TEXT,
+    "googleId" TEXT NOT NULL,
+    "role" "UserRole" NOT NULL DEFAULT 'USER',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable Article
 CREATE TABLE "Article" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -17,7 +30,7 @@ CREATE TABLE "Article" (
     CONSTRAINT "Article_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
+-- CreateTable Receipt
 CREATE TABLE "Receipt" (
     "id" TEXT NOT NULL,
     "broj" TEXT NOT NULL,
@@ -32,7 +45,7 @@ CREATE TABLE "Receipt" (
     CONSTRAINT "Receipt_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
+-- CreateTable ReceiptItem
 CREATE TABLE "ReceiptItem" (
     "id" TEXT NOT NULL,
     "receiptId" TEXT NOT NULL,
@@ -44,7 +57,7 @@ CREATE TABLE "ReceiptItem" (
     CONSTRAINT "ReceiptItem_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
+-- CreateTable Transaction
 CREATE TABLE "Transaction" (
     "id" TEXT NOT NULL,
     "receiptId" TEXT NOT NULL,
@@ -55,7 +68,7 @@ CREATE TABLE "Transaction" (
     CONSTRAINT "Transaction_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
+-- CreateTable SalesReport
 CREATE TABLE "SalesReport" (
     "id" TEXT NOT NULL,
     "datum" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -69,40 +82,20 @@ CREATE TABLE "SalesReport" (
 );
 
 -- CreateIndex
+CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+CREATE UNIQUE INDEX "User_googleId_key" ON "User"("googleId");
 CREATE UNIQUE INDEX "Article_name_key" ON "Article"("name");
-
--- CreateIndex
 CREATE UNIQUE INDEX "Article_code_key" ON "Article"("code");
-
--- CreateIndex
 CREATE UNIQUE INDEX "Receipt_broj_key" ON "Receipt"("broj");
-
--- CreateIndex
 CREATE INDEX "ReceiptItem_receiptId_idx" ON "ReceiptItem"("receiptId");
-
--- CreateIndex
 CREATE INDEX "ReceiptItem_articleId_idx" ON "ReceiptItem"("articleId");
-
--- CreateIndex
 CREATE UNIQUE INDEX "Transaction_receiptId_key" ON "Transaction"("receiptId");
-
--- CreateIndex
 CREATE INDEX "Transaction_receiptId_idx" ON "Transaction"("receiptId");
-
--- CreateIndex
 CREATE INDEX "Transaction_userId_idx" ON "Transaction"("userId");
 
 -- AddForeignKey
 ALTER TABLE "Receipt" ADD CONSTRAINT "Receipt_tvorac_fkey" FOREIGN KEY ("tvorac") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "ReceiptItem" ADD CONSTRAINT "ReceiptItem_receiptId_fkey" FOREIGN KEY ("receiptId") REFERENCES "Receipt"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "ReceiptItem" ADD CONSTRAINT "ReceiptItem_articleId_fkey" FOREIGN KEY ("articleId") REFERENCES "Article"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "Transaction" ADD CONSTRAINT "Transaction_receiptId_fkey" FOREIGN KEY ("receiptId") REFERENCES "Receipt"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "Transaction" ADD CONSTRAINT "Transaction_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -64,7 +64,7 @@ passport.use(
               googleId: profile.id,
               email: email,
               name: profile.displayName,
-              role: isAdmin ? "ADMIN" : "USER", // Postavi ADMIN ulogu ako je email na listi
+              role: isAdmin ? "ADMIN" : "USER",
             },
           });
 
@@ -83,6 +83,12 @@ passport.use(
 
         } else {
           console.log("Existing user found, role:", user.role);
+        }
+
+        // Check if user has role X and block login
+        if (user.role === "X") {
+          console.log("Login rejected - user has X role");
+          return done(null, false, { message: "Vaš račun je blokiran" });
         }
 
         done(null, user);

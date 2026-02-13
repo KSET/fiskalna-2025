@@ -166,7 +166,7 @@ export default function Korisnici() {
                   fontSize: '14px'
                 }}
               >
-                <option value="GUEST">GUEST</option>
+                <option value="X">X</option>
                 <option value="USER">USER</option>
                 <option value="ADMIN">ADMIN</option>
               </select>
@@ -243,7 +243,7 @@ export default function Korisnici() {
                         setEditData({ ...editData, role: e.target.value })
                       }
                     >
-                      <option>GUEST</option>
+                      <option>X</option>
                       <option>USER</option>
                       <option>ADMIN</option>
                     </select>
@@ -298,7 +298,7 @@ export default function Korisnici() {
         <ul>
           <li><strong>ADMIN</strong> - Puni pristup svim postavkama i funkcijama</li>
           <li><strong>USER</strong> - Pristup prodaji, računima i izvještajima</li>
-          <li><strong>GUEST</strong> - Ograničeni pristup</li>
+          <li><strong>X</strong> - Nema pristupa (ne može se prijaviti)</li>
         </ul>
       </div>
     </div>
