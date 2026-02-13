@@ -7,10 +7,86 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum UserRole {
+  ADMIN
+  USER
+  GUEST
+}
+
 model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String?
+  googleId      String   @unique
+  role          UserRole @default(USER)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  receipts      Receipt[]
+  transactions  Transaction[]
+}
+
+model Article {
   id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  googleId  String   @unique
+  name      String   @unique
+  code      String   @unique
+  kpdSifra  String
+  brutIznos Float    // Bruto iznos in €
+  pdv       Float    // PDV percentage
+  opis      String?  // Description
+  active    Boolean  @default(true)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  receiptItems ReceiptItem[]
+}
+
+model Receipt {
+  id            String   @id @default(cuid())
+  broj          String   @unique // Receipt number
+  datum         DateTime @default(now())
+  nacinPlacanja String   // Payment method
+  ukupno        Float    // Total
+  tvorac        String   // User who created it
+  kreator       User     @relation(fields: [tvorac], references: [id], onDelete: Cascade)
+  items         ReceiptItem[]
+  transaction   Transaction?
+  isCancelled   Boolean  @default(false) // For "Storno"
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model ReceiptItem {
+  id        String   @id @default(cuid())
+  receiptId String
+  receipt   Receipt  @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  articleId String
+  article   Article  @relation(fields: [articleId], references: [id])
+  quantity  Int
+  price     Float
+  createdAt DateTime @default(now())
+
+  @@index([receiptId])
+  @@index([articleId])
+}
+
+model Transaction {
+  id        String   @id @default(cuid())
+  receiptId String   @unique
+  receipt   Receipt  @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount    Float
+  createdAt DateTime @default(now())
+
+  @@index([receiptId])
+  @@index([userId])
+}
+
+model SalesReport {
+  id        String   @id @default(cuid())
+  datum     DateTime @default(now())
+  ukupnoProdano Float
+  brojRacuna     Int
+  opis      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

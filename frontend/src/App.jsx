@@ -3,6 +3,14 @@ import Login from "./pages/Login";
 import Home from "./pages/Home";
 import ProtectedRoute from "./ProtectedRoute";
 import PublicRoute from "./PublicRoute";
+import MainLayout from "./layouts/MainLayout";
+import Prodaja from "./pages/Prodaja";
+import Racuni from "./pages/Racuni";
+import Izvjestaj from "./pages/Izvjestaj";
+import UkupniIzvjestaj from "./pages/admin/UkupniIzvjestaj";
+import Artikli from "./pages/admin/Artikli";
+import povijest from "./pages/admin/povijest";
+import Korisnici from "./pages/admin/Korisnici";
 
 export default function App() {
   return (
@@ -20,42 +28,83 @@ export default function App() {
           path="/home"
           element={
             <ProtectedRoute>
-              <Home />
+              <MainLayout>
+                <Home />
+              </MainLayout>
             </ProtectedRoute>
           }
         />
-        
-        {/* Komentar jsx */}
-        {/* DODAJ PROTECTED RUTE ZA ADMIN PANEL U KOREALACIJA SA PROTECTED RUTE */}
+
+        {/* Main Application Routes */}
         <Route
-          path="/userManager"
+          path="/prodaja"
           element={
             <ProtectedRoute>
-              <Home />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/products"
-          element={
-            <ProtectedRoute>
-              <Home />
+              <MainLayout>
+                <Prodaja />
+              </MainLayout>
             </ProtectedRoute>
           }
         />
         <Route
-          path="/reciepts"
+          path="/racuni"
           element={
             <ProtectedRoute>
-              <Home />
+              <MainLayout>
+                <Racuni />
+              </MainLayout>
             </ProtectedRoute>
           }
         />
         <Route
-          path="/reports"
+          path="/izvjestaj"
           element={
             <ProtectedRoute>
-              <Home />
+              <MainLayout>
+                <Izvjestaj />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Admin Routes */}
+        <Route
+          path="/admin/ukupni-izvjestaj"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <UkupniIzvjestaj />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/artikli"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <Artikli />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/povijest"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <povijest />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/korisnici"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <Korisnici />
+              </MainLayout>
             </ProtectedRoute>
           }
         />
