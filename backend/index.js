@@ -23,6 +23,38 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
+// ========== HEALTH CHECK & DATABASE TEST ==========
+app.get("/api/health", async (req, res) => {
+  console.log("\n🏥 HEALTH CHECK endpoint");
+  try {
+    console.log("  Checking database connection...");
+    const userCount = await prisma.user.count();
+    const transactionCount = await prisma.transaction.count();
+    const receiptCount = await prisma.receipt.count();
+    
+    console.log(`  ✅ Database OK!`);
+    console.log(`     Users: ${userCount}`);
+    console.log(`     Transactions: ${transactionCount}`);
+    console.log(`     Receipts: ${receiptCount}`);
+    
+    res.json({
+      status: "OK",
+      database: "connected",
+      users: userCount,
+      transactions: transactionCount,
+      receipts: receiptCount
+    });
+  } catch (error) {
+    console.error("  ❌ Database connection FAILED:");
+    console.error("     Error:", error.message);
+    res.status(500).json({
+      status: "ERROR",
+      database: "disconnected",
+      error: error.message
+    });
+  }
+});
+
 // Routes
 app.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
 
@@ -46,10 +78,15 @@ app.get("/oauth/callback", (req, res, next) => {
 });
 
 app.get("/auth/me", (req, res) => {
+  console.log("📋 GET /auth/me - Checking authentication status");
+  console.log("   Authenticated:", req.isAuthenticated());
+  console.log("   User:", req.user?.email || "NOT AUTHENTICATED");
   res.json(req.user || null);
 });
 
 app.post("/auth/logout", (req, res) => {
+  console.log("🔚 POST /auth/logout - User logging out");
+  console.log("   User:", req.user?.email || "UNKNOWN");
   req.logout(() => {
     res.json({ success: true });
   });
@@ -217,7 +254,13 @@ app.put("/api/receipts/:id", requireAuth, async (req, res) => {
 
 // ========== TRANSACTIONS API ==========
 app.get("/api/transactions", requireAuth, async (req, res) => {
+  console.log("\n========================================");
+  console.log("📍 GET /api/transactions endpoint hit");
+  console.log("🔐 User:", req.user?.email || "NOT AUTHENTICATED");
+  console.log("========================================");
+  
   try {
+    console.log("🔍 Fetching transactions from database...");
     const transactions = await prisma.transaction.findMany({
       include: { 
         receipt: { include: { items: { include: { article: true } } } },
@@ -225,9 +268,18 @@ app.get("/api/transactions", requireAuth, async (req, res) => {
       },
       orderBy: { createdAt: "desc" },
     });
+    
+    console.log(`✅ Successfully fetched ${transactions.length} transactions`);
+    console.log("📊 First transaction sample:", JSON.stringify(transactions[0], null, 2));
+    console.log("========================================\n");
+    
     res.json(transactions);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("❌ ERROR in /api/transactions endpoint:");
+    console.error("Error message:", error.message);
+    console.error("Error stack:", error.stack);
+    console.error("========================================\n");
+    res.status(500).json({ error: error.message, details: error.toString() });
   }
 });
 
@@ -326,4 +378,9 @@ app.delete("/api/users/:id", requireAuth, async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log("\n========================================");
+  console.log("🚀 Backend Server Started!");
+  console.log(`📍 Running on http://localhost:${PORT}`);
+  console.log("========================================\n");
+});

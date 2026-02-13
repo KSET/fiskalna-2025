@@ -9,7 +9,7 @@ import Racuni from "./pages/Racuni";
 import Izvjestaj from "./pages/Izvjestaj";
 import UkupniIzvjestaj from "./pages/admin/UkupniIzvjestaj";
 import Artikli from "./pages/admin/Artikli";
-import povijest from "./pages/admin/povijest";
+import Povijest from "./pages/admin/povijest";
 import Korisnici from "./pages/admin/Korisnici";
 
 export default function App() {
@@ -93,7 +93,7 @@ export default function App() {
           element={
             <ProtectedRoute>
               <MainLayout>
-                <povijest />
+                <Povijest />
               </MainLayout>
             </ProtectedRoute>
           }
