@@ -58,6 +58,14 @@ export default function Prodaja() {
     setSelectedItems(selectedItems.filter(item => item.articleId !== articleId));
   };
 
+  const clearCart = () => {
+    setSelectedItems([])
+  }  
+  
+  const printCart = () => {
+    // todo
+  }
+
   const updateQuantity = (articleId, quantity) => {
     if (quantity <= 0) {
       removeItem(articleId);
@@ -134,17 +142,16 @@ export default function Prodaja() {
                       <p>€{item.price.toFixed(2)} x</p>
                     </div>
                     <div className="quantity-control">
-                      <button onClick={() => updateQuantity(item.articleId, item.quantity - 1)}>
+                      <button onClick={() => updateQuantity(item.articleId, item.quantity - 1)} style={{color:"black"}}>
                         -
                       </button>
                       <input
-                        type="number"
                         value={item.quantity}
                         onChange={(e) =>
                           updateQuantity(item.articleId, parseInt(e.target.value))
                         }
                       />
-                      <button onClick={() => updateQuantity(item.articleId, item.quantity + 1)}>
+                      <button onClick={() => updateQuantity(item.articleId, item.quantity + 1)} style={{color:"black"}}>
                         +
                       </button>
                     </div>
@@ -177,6 +184,17 @@ export default function Prodaja() {
                 <button onClick={handleCheckout} className="btn-success">
                   Završi Prodaju
                 </button>
+                <button onClick={clearCart} className="btn-danger">
+                  Isprazni košaricu
+                </button>
+
+                <p></p>
+
+                <button onClick={printCart} className="btn-primary" style={{width:"100%"}}>
+                  Ispiši
+                </button>
+                
+                
               </div>
             </>
           )}

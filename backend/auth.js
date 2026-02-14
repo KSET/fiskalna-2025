@@ -33,7 +33,7 @@ passport.use(
         console.log("Login attempt with email:", email);
 
         // Lista administratorskih email adresa
-        const adminEmails = ["tadija75@gmail.com"];
+        const adminEmails = ["tadija75@gmail.com", "lorenaivanisevic@gmail.com"];
 
         // Provjera je li korisnik admin ili ima @kset.org domenu
         const isAdmin = adminEmails.includes(email);
