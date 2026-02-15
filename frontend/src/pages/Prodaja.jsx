@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import "../styles/Pages.css";
+import ReceiptPrintButton from "./admin/Racun";
+
 
 export default function Prodaja() {
   const [articles, setArticles] = useState([]);
@@ -7,8 +9,22 @@ export default function Prodaja() {
   const [paymentMethod, setPaymentMethod] = useState("Gotovina");
   const [loading, setLoading] = useState(true);
 
+  const [order, setOrder] = useState(
+    [
+      {
+        name: "Neš Umočit - single",
+        quantity: 1,
+        price: 3.0,
+      },
+    ]
+
+  );
+
+
+
   useEffect(() => {
     fetchArticles();
+
   }, []);
 
   const fetchArticles = async () => {
@@ -59,9 +75,10 @@ export default function Prodaja() {
   };
 
   const clearCart = () => {
+    console.log(selectedItems)
     setSelectedItems([])
-  }  
-  
+  }
+
   const printCart = () => {
     // todo
   }
@@ -105,7 +122,7 @@ export default function Prodaja() {
     }
   };
 
-  if (loading) return <div className="page-container" style={{color: '#333', padding: '40px 20px'}}>Učitavanje...</div>;
+  if (loading) return <div className="page-container" style={{ color: '#333', padding: '40px 20px' }}>Učitavanje...</div>;
 
   return (
     <div className="page-container">
@@ -142,7 +159,7 @@ export default function Prodaja() {
                       <p>€{item.price.toFixed(2)} x</p>
                     </div>
                     <div className="quantity-control">
-                      <button onClick={() => updateQuantity(item.articleId, item.quantity - 1)} style={{color:"black"}}>
+                      <button onClick={() => updateQuantity(item.articleId, item.quantity - 1)} style={{ color: "black" }}>
                         -
                       </button>
                       <input
@@ -151,7 +168,7 @@ export default function Prodaja() {
                           updateQuantity(item.articleId, parseInt(e.target.value))
                         }
                       />
-                      <button onClick={() => updateQuantity(item.articleId, item.quantity + 1)} style={{color:"black"}}>
+                      <button onClick={() => updateQuantity(item.articleId, item.quantity + 1)} style={{ color: "black" }}>
                         +
                       </button>
                     </div>
@@ -190,16 +207,19 @@ export default function Prodaja() {
 
                 <p></p>
 
-                <button onClick={printCart} className="btn-primary" style={{width:"100%"}}>
+                <ReceiptPrintButton currentOrder={selectedItems}></ReceiptPrintButton>
+                {/* <button onClick={printCart} className="btn-primary" style={{ width: "100%" }}>
                   Ispiši
-                </button>
-                
-                
+                </button> */}
+
+
               </div>
             </>
           )}
         </div>
       </div>
+      
     </div>
+
   );
 }
