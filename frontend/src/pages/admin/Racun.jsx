@@ -2,35 +2,10 @@ import { useRef } from "react";
 import { QRCodeSVG } from "qrcode.react";
 
 
-const CroatianDateTime = () => {
-   const date = new Date();
-   const pad = (num) => num.toString().padStart(2, "0");
-
-   const formattedDate =
-      `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}. ${pad(date.getHours())}:${pad(date.getMinutes())}`;
-
-   return formattedDate
-};
+const Receipt = ({ order }) => {
+   if (!(order.items)) return
 
 
-const orderInfo = {
-   phone: "0916043415",
-   email: "info@kset.org",
-   time: CroatianDateTime(),
-   cashier: "doria",
-   items: [
-   ], 
-   base: 0, // todo 
-   tax: 0,
-
-   jir: 4332,
-   zki: 3924,
-   link: "https://jobfair.fer.unizg.hr/"
-
-};
-
-
-const Receipt = ({ order, items }) => {
    const line = "-".repeat(42);
 
    
@@ -68,7 +43,7 @@ Oznaka blagajnika: ${order.cashier}
 
 Artikl${" ".repeat(2)}Kol.${" ".repeat(4)}Cijena${" ".repeat(4)}Iznos
 ${line}
-${items.map(item => {
+${order.items.map(item => {
          const nameLines = wrapText(item.name, maxNameWidth, maxLastNameWidth);
          return nameLines
             .map((lineText, index) => {
@@ -83,7 +58,7 @@ ${items.map(item => {
             .join("\n");
       }).join("\n")}
 ${line}
-UKUPNO${padLeft(items.reduce(
+UKUPNO${padLeft(order.items.reduce(
          (acc, item) => acc + item.price * item.quantity,
          0
       ).toFixed(2) + " €", 25)}
@@ -103,25 +78,20 @@ ZKI: ${order.zki}
       </pre>
    <div>
    <QRCodeSVG
-      value={orderInfo.link}
+      value={order.link}
       size={120}
       level="Q"
       bgColor="#FFFFFF"
       fgColor="#000000"
     />
    </div>
-
-      
 </>
-
-
   
    );
 };
 
 
-const ReceiptPrintButton = ({ currentOrder }) => {
-   console.log(currentOrder)
+const ReceiptPrintButton = ({ order }) => {
    const receiptRef = useRef();
 
    const printaj = () => {
@@ -138,13 +108,12 @@ const ReceiptPrintButton = ({ currentOrder }) => {
       <div>
          <div style={{ display: "none" }}>
             <div ref={receiptRef}>
-               <Receipt order={orderInfo} items={currentOrder} />
+               <Receipt order={order}  />
             </div>
          </div>
 
          <button
             onClick={printaj}
-            disabled={!currentOrder.length}
          >
             Ispiši
          </button>

@@ -2,24 +2,22 @@ import { useState, useEffect } from "react";
 import "../styles/Pages.css";
 import ReceiptPrintButton from "./admin/Racun";
 
+const CroatianDateTime = () => {
+  const date = new Date();
+  const pad = (num) => num.toString().padStart(2, "0");
+
+  const formattedDate =
+    `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}. ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+
+  return formattedDate
+};
+
 
 export default function Prodaja() {
   const [articles, setArticles] = useState([]);
   const [selectedItems, setSelectedItems] = useState([]);
   const [paymentMethod, setPaymentMethod] = useState("Gotovina");
   const [loading, setLoading] = useState(true);
-
-  const [order, setOrder] = useState(
-    [
-      {
-        name: "Neš Umočit - single",
-        quantity: 1,
-        price: 3.0,
-      },
-    ]
-
-  );
-
 
 
   useEffect(() => {
@@ -79,9 +77,6 @@ export default function Prodaja() {
     setSelectedItems([])
   }
 
-  const printCart = () => {
-    // todo
-  }
 
   const updateQuantity = (articleId, quantity) => {
     if (quantity <= 0) {
@@ -207,7 +202,20 @@ export default function Prodaja() {
 
                 <p></p>
 
-                <ReceiptPrintButton currentOrder={selectedItems}></ReceiptPrintButton>
+                <ReceiptPrintButton order={{
+                  num: `RCN-${Date.now()}`,
+                  payment: paymentMethod,
+                  items: selectedItems,
+                  time: CroatianDateTime(),
+                  cashier: "doria",
+                  base: 0, // todo 
+                  tax: 0,
+                  jir: 4332,
+                  zki: 3924,
+                  link: "https://jobfair.fer.unizg.hr/",
+                  phone: "0916043415",
+                  email: "info@kset.org",
+                }} ></ReceiptPrintButton>
                 {/* <button onClick={printCart} className="btn-primary" style={{ width: "100%" }}>
                   Ispiši
                 </button> */}
@@ -218,7 +226,7 @@ export default function Prodaja() {
           )}
         </div>
       </div>
-      
+
     </div>
 
   );
