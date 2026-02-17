@@ -6,10 +6,10 @@ export default function UkupniIzvjestaj() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
-    datum: new Date().toISOString().split("T")[0],
-    ukupnoProdano: 0,
-    brojRacuna: 0,
-    opis: "",
+    date: new Date().toISOString().split("T")[0],
+    totalSalesAmount: 0,
+    invoiceCount: 0,
+    description: "",
   });
 
   useEffect(() => {
@@ -43,10 +43,10 @@ export default function UkupniIzvjestaj() {
       if (response.ok) {
         alert("Izvještaj je kreiran!");
         setFormData({
-          datum: new Date().toISOString().split("T")[0],
-          ukupnoProdano: 0,
-          brojRacuna: 0,
-          opis: "",
+          date: new Date().toISOString().split("T")[0],
+          totalSalesAmount: 0,
+          invoiceCount: 0,
+          description: "",
         });
         setShowForm(false);
         fetchReports();
@@ -76,8 +76,8 @@ export default function UkupniIzvjestaj() {
             <label>Datum:</label>
             <input
               type="date"
-              value={formData.datum}
-              onChange={(e) => setFormData({ ...formData, datum: e.target.value })}
+              value={formData.date}
+              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
               required
             />
           </div>
@@ -86,9 +86,9 @@ export default function UkupniIzvjestaj() {
             <input
               type="number"
               step="0.01"
-              value={formData.ukupnoProdano}
+              value={formData.totalSalesAmount}
               onChange={(e) =>
-                setFormData({ ...formData, ukupnoProdano: parseFloat(e.target.value) })
+                setFormData({ ...formData, totalSalesAmount: parseFloat(e.target.value) })
               }
               required
             />
@@ -97,9 +97,9 @@ export default function UkupniIzvjestaj() {
             <label>Broj Računa:</label>
             <input
               type="number"
-              value={formData.brojRacuna}
+              value={formData.invoiceCount}
               onChange={(e) =>
-                setFormData({ ...formData, brojRacuna: parseInt(e.target.value) })
+                setFormData({ ...formData, invoiceCount: parseInt(e.target.value) })
               }
               required
             />
@@ -107,8 +107,8 @@ export default function UkupniIzvjestaj() {
           <div className="form-group">
             <label>Opis:</label>
             <textarea
-              value={formData.opis}
-              onChange={(e) => setFormData({ ...formData, opis: e.target.value })}
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             ></textarea>
           </div>
           <button type="submit" className="btn-success">
@@ -130,10 +130,10 @@ export default function UkupniIzvjestaj() {
           <tbody>
             {reports.map(report => (
               <tr key={report.id}>
-                <td>{new Date(report.datum).toLocaleDateString("hr-HR")}</td>
-                <td>€{report.ukupnoProdano.toFixed(2)}</td>
-                <td>{report.brojRacuna}</td>
-                <td>{report.opis || "-"}</td>
+                <td>{new Date(report.date).toLocaleDateString("hr-HR")}</td>
+                <td>€{report.totalSalesAmount.toFixed(2)}</td>
+                <td>{report.invoiceCount}</td>
+                <td>{report.description || "-"}</td>
               </tr>
             ))}
           </tbody>

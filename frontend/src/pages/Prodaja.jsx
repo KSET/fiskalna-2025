@@ -61,8 +61,11 @@ export default function Prodaja() {
         {
           articleId: article.id,
           name: article.name,
-          price: article.brutIznos,
+          price: article.price,
           quantity: 1,
+          taxRate: article.taxRate,
+          description: article.description,
+          unit: article.unit,
         },
       ]);
     }
@@ -97,23 +100,53 @@ export default function Prodaja() {
 
     try {
       const receiptNumber = `RCN-${Date.now()}`;
+      
+      // Calculate totals
+      const brutto = selectedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      const netto = 0; // Calculate based on tax rates
+      const taxValue = 0; // Calculate based on tax rates
+      
+      // Validate payment type is uppercase
+      const paymentTypeMap = {
+        "Gotovina": "GOTOVINA",
+        "Kartica": "KARTICA"
+      };
+      const paymentTypeValue = paymentTypeMap[paymentMethod] || "GOTOVINA";
+      
       const response = await fetch("http://localhost:3000/api/receipts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          broj: receiptNumber,
-          nacinPlacanja: paymentMethod,
-          items: selectedItems,
+          receiptNumber,
+          invoiceType: "RAĆUN",
+          paymentType: paymentTypeValue,
+          brutto,
+          netto,
+          taxValue,
+          currency: "EUR",
+          items: selectedItems.map(item => ({
+            articleId: item.articleId,
+            name: item.name,
+            description: item.description,
+            quantity: item.quantity,
+            price: item.price,
+            taxRate: item.taxRate || 0,
+            unit: item.unit,
+          })),
         }),
       });
 
       if (response.ok) {
         alert("Račun je uspješno kreiran!");
         setSelectedItems([]);
+      } else {
+        const error = await response.json();
+        alert("Greška: " + (error.error || "Nepoznata greška"));
       }
     } catch (error) {
       console.error("Error creating receipt:", error);
+      alert("Greška pri kreiranju računa: " + error.message);
     }
   };
 
@@ -129,9 +162,9 @@ export default function Prodaja() {
             {articles.map(article => (
               <div key={article.id} className="article-card">
                 <h3>{article.name}</h3>
-                <p className="code">Kod: {article.code}</p>
-                <p className="price">€{article.brutIznos.toFixed(2)}</p>
-                <p className="desc">{article.opis}</p>
+                <p className="code">Kod: {article.productCode}</p>
+                <p className="price">€{article.price.toFixed(2)}</p>
+                <p className="desc">{article.description}</p>
                 <button onClick={() => addItem(article)} className="btn-primary">
                   Dodaj
                 </button>

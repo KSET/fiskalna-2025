@@ -91,7 +91,7 @@ ZKI: ${order.zki}
 };
 
 
-const ReceiptPrintButton = ({ order }) => {
+const ReceiptPrintButton = ({ order, onAfterPrint }) => {
    const receiptRef = useRef();
 
    const printaj = () => {
@@ -102,6 +102,10 @@ const ReceiptPrintButton = ({ order }) => {
       w.document.close();
       w.print();
       w.close();
+      
+      if (onAfterPrint) {
+        setTimeout(onAfterPrint, 500); //MORA BITI DELAY INACE NE RADI
+      }
    };
 
    return (

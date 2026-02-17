@@ -13,6 +13,12 @@ enum UserRole {
   ADMIN
 }
 
+enum PaymentType {
+  GOTOVINA
+  KARTICA
+  TRANSAKCIJSKI
+}
+
 model User {
   id            String   @id @default(cuid())
   email         String   @unique
@@ -26,43 +32,102 @@ model User {
 }
 
 model Article {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  code      String   @unique
-  kpdSifra  String
-  brutIznos Float    // Bruto iznos in €
-  pdv       Float    // PDV percentage
-  opis      String?  // Description
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  receiptItems ReceiptItem[]
+  id              String   @id @default(cuid())
+  name            String   @unique
+  productCode     String   @unique
+  kpdCode         String
+  price           Float    // Bruto iznos in €
+  taxRate         Float    // PDV percentage
+  description     String?
+  unit            String?
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  receiptItems    ReceiptItem[]
 }
 
 model Receipt {
-  id            String   @id @default(cuid())
-  broj          String   @unique // Receipt number
-  datum         DateTime @default(now())
-  nacinPlacanja String   // Payment method
-  ukupno        Float    // Total
-  tvorac        String   // User who created it
-  kreator       User     @relation(fields: [tvorac], references: [id], onDelete: Cascade)
-  items         ReceiptItem[]
-  transaction   Transaction?
-  isCancelled   Boolean  @default(false) // For "Storno"
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                    String        @id @default(cuid())
+  receiptNumber         String        @unique
+  webshopOrderId        String?       // External webshop order ID
+  webshopType           String?       @default("CUSTOM") // WOO_COMMERCE, SHOPIFY, CUSTOM
+  webshopEvent          String?
+  webshopOrderNumber    String?
+  invoiceType           String        @default("RAĆUN") // PONUDA, RAĆUN, FISKALNI_RAĆUN
+  paymentType           PaymentType   @default(GOTOVINA)
+  paymentGatewayCode    String?
+  paymentGatewayName    String?
+  userId                String
+  user                  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brutto                Float
+  netto                 Float
+  taxValue              Float
+  currency              String        @default("EUR")
+  taxesIncluded         Boolean       @default(false)
+  dueDate               DateTime?
+  validTo               DateTime?
+  billingAddress        BillingAddress? @relation(fields: [billingAddressId], references: [id])
+  billingAddressId      String?
+  shippingAddress       ShippingAddress? @relation(fields: [shippingAddressId], references: [id])
+  shippingAddressId     String?
+  customerLocale        String?       @default("HR")
+  termsHR               String?
+  termsEN               String?
+  termsDE               String?
+  internalNote          String?
+  discountValue         Float         @default(0)
+  shippingCost          Float         @default(0)
+  isCancelled           Boolean       @default(false)
+  items                 ReceiptItem[]
+  transaction           Transaction?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+}
+
+model BillingAddress {
+  id          String   @id @default(cuid())
+  name        String
+  address1    String
+  address2    String?
+  city        String
+  country     String
+  phone       String?
+  zipCode     String
+  email       String?
+  vatNumber   String?
+  oib         String?
+  company     String?
+  receipts    Receipt[]
+}
+
+model ShippingAddress {
+  id          String   @id @default(cuid())
+  name        String
+  address1    String
+  address2    String?
+  city        String
+  country     String
+  phone       String?
+  zipCode     String
+  email       String?
+  company     String?
+  receipts    Receipt[]
 }
 
 model ReceiptItem {
-  id        String   @id @default(cuid())
-  receiptId String
-  receipt   Receipt  @relation(fields: [receiptId], references: [id], onDelete: Cascade)
-  articleId String
-  article   Article  @relation(fields: [articleId], references: [id])
-  quantity  Int
-  price     Float
-  createdAt DateTime @default(now())
+  id              String   @id @default(cuid())
+  receiptId       String
+  receipt         Receipt  @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  articleId       String
+  article         Article  @relation(fields: [articleId], references: [id])
+  name            String?
+  description     String?
+  lineItemId      String?
+  quantity        Float
+  price           Float
+  taxRate         Float
+  unit            String?
+  createdAt       DateTime @default(now())
 
   @@index([receiptId])
   @@index([articleId])
@@ -82,11 +147,11 @@ model Transaction {
 }
 
 model SalesReport {
-  id        String   @id @default(cuid())
-  datum     DateTime @default(now())
-  ukupnoProdano Float
-  brojRacuna     Int
-  opis      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  date                DateTime @default(now())
+  totalSalesAmount    Float
+  invoiceCount        Int
+  description         String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }

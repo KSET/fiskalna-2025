@@ -26,6 +26,8 @@ passport.use(
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       callbackURL: process.env.GOOGLE_REDIRECT_URI,
+      // Domain restriction za KSET
+      hd: "kset.org",
     },
     async (accessToken, refreshToken, profile, done) => {
       try {

@@ -50,23 +50,23 @@ export default function Izvjestaj() {
 
   // Filter za odabrani datum
   const dayReceipts = receipts.filter(r => {
-    const rDate = new Date(r.datum).toISOString().split('T')[0];
+    const rDate = new Date(r.createdAt).toISOString().split('T')[0];
     return rDate === selectedDate && !r.isCancelled;
-  }).sort((a, b) => a.datum - b.datum);
+  }).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
   // Vremenske granice
-  const startTime = dayReceipts.length > 0 ? new Date(dayReceipts[0].datum) : null;
-  const endTime = dayReceipts.length > 0 ? new Date(dayReceipts[dayReceipts.length - 1].datum) : null;
+  const startTime = dayReceipts.length > 0 ? new Date(dayReceipts[0].createdAt) : null;
+  const endTime = dayReceipts.length > 0 ? new Date(dayReceipts[dayReceipts.length - 1].createdAt) : null;
 
   // Brojevi računa
-  const receiptNumbers = dayReceipts.map(r => r.broj);
+  const receiptNumbers = dayReceipts.map(r => r.receiptNumber);
   const minReceiptNum = receiptNumbers.length > 0 ? receiptNumbers[0] : "N/A";
   const maxReceiptNum = receiptNumbers.length > 0 ? receiptNumbers[receiptNumbers.length - 1] : "N/A";
 
   // Grupiraj artikle po načinu plaćanja
   const articlesByPayment = {};
   dayReceipts.forEach(receipt => {
-    const method = receipt.nacinPlacanja;
+    const method = receipt.paymentType;
     if (!articlesByPayment[method]) {
       articlesByPayment[method] = {};
     }

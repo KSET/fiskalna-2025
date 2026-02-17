@@ -114,9 +114,9 @@ app.post("/api/articles", requireAuth, async (req, res) => {
     return res.status(403).json({ error: "Unauthorized" });
   }
   try {
-    const { name, code, kpdSifra, brutIznos, pdv, opis } = req.body;
+    const { name, productCode, kpdCode, price, taxRate, description, unit } = req.body;
     const article = await prisma.article.create({
-      data: { name, code, kpdSifra, brutIznos, pdv, opis },
+      data: { name, productCode, kpdCode, price, taxRate, description, unit },
     });
     res.status(201).json(article);
   } catch (error) {
@@ -130,10 +130,10 @@ app.put("/api/articles/:id", requireAuth, async (req, res) => {
   }
   try {
     const { id } = req.params;
-    const { name, code, kpdSifra, brutIznos, pdv, opis, active } = req.body;
+    const { name, productCode, kpdCode, price, taxRate, description, unit, active } = req.body;
     const article = await prisma.article.update({
       where: { id },
-      data: { name, code, kpdSifra, brutIznos, pdv, opis, active },
+      data: { name, productCode, kpdCode, price, taxRate, description, unit, active },
     });
     res.json(article);
   } catch (error) {
@@ -158,8 +158,8 @@ app.delete("/api/articles/:id", requireAuth, async (req, res) => {
 app.get("/api/receipts", requireAuth, async (req, res) => {
   try {
     const receipts = await prisma.receipt.findMany({
-      include: { items: { include: { article: true } }, kreator: true },
-      orderBy: { datum: "desc" },
+      include: { items: { include: { article: true } }, user: true },
+      orderBy: { createdAt: "desc" },
     });
     res.json(receipts);
   } catch (error) {
@@ -167,38 +167,159 @@ app.get("/api/receipts", requireAuth, async (req, res) => {
   }
 });
 
+// Get receipt for printing - secure endpoint with authentication
+app.get("/api/receipts/:id/print", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Fetch receipt with all details
+    const receipt = await prisma.receipt.findUnique({
+      where: { id },
+      include: { 
+        items: { include: { article: true } },
+        user: { select: { id: true, name: true, email: true } }
+      },
+    });
+
+    if (!receipt) {
+      return res.status(404).json({ error: "Receipt not found" });
+    }
+
+    // Format receipt data for printing
+    const printData = {
+      num: receipt.receiptNumber,
+      payment: receipt.paymentType,
+      items: receipt.items.map(item => ({
+        name: item.name || item.article?.name || "N/A",
+        quantity: item.quantity,
+        price: item.price,
+      })),
+      time: new Date(receipt.createdAt).toLocaleString("hr-HR"),
+      cashier: receipt.user?.name || "N/A",
+      base: receipt.netto,
+      tax: receipt.taxValue,
+      jir: receipt.id.slice(0, 8).toUpperCase(), // Using first 8 chars of receipt ID as JIR
+      zki: Math.abs(receipt.id.charCodeAt(0) * 1000000).toString().slice(-8), // Generate ZKI from ID
+      link: `https://app.fira.finance/receipt/${receipt.id}`,
+      phone: "0916043415",
+      email: "info@kset.org",
+    };
+
+    res.json(printData);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post("/api/receipts", requireAuth, async (req, res) => {
   try {
-    const { broj, nacinPlacanja, items } = req.body; // items: [{articleId, quantity, price}]
+    const { 
+      receiptNumber, 
+      webshopOrderId,
+      webshopType,
+      webshopEvent,
+      webshopOrderNumber,
+      invoiceType = "RAĆUN", 
+      paymentType = "GOTOVINA",
+      paymentGatewayCode,
+      paymentGatewayName,
+      brutto, 
+      netto, 
+      taxValue,
+      currency = "EUR",
+      taxesIncluded = false,
+      dueDate,
+      validTo,
+      billingAddress,
+      shippingAddress,
+      customerLocale = "HR",
+      termsHR,
+      termsEN,
+      termsDE,
+      internalNote,
+      discountValue = 0,
+      shippingCost = 0,
+      items 
+    } = req.body;
     
-    // Calculate total
-    const ukupno = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    // Validate payment type is uppercase
+    const validPaymentTypes = ["GOTOVINA", "KARTICA", "TRANSAKCIJSKI"];
+    if (!validPaymentTypes.includes(paymentType)) {
+      return res.status(400).json({ error: "Invalid paymentType. Must be GOTOVINA, KARTICA, or TRANSAKCIJSKI" });
+    }
+
+    // Create billing address if provided
+    let billingAddressId = null;
+    if (billingAddress) {
+      const createdBillingAddress = await prisma.billingAddress.create({
+        data: billingAddress,
+      });
+      billingAddressId = createdBillingAddress.id;
+    }
+
+    // Create shipping address if provided
+    let shippingAddressId = null;
+    if (shippingAddress) {
+      const createdShippingAddress = await prisma.shippingAddress.create({
+        data: shippingAddress,
+      });
+      shippingAddressId = createdShippingAddress.id;
+    }
     
     const receipt = await prisma.receipt.create({
       data: {
-        broj,
-        nacinPlacanja,
-        ukupno,
-        tvorac: req.user.id,
+        receiptNumber,
+        webshopOrderId,
+        webshopType,
+        webshopEvent,
+        webshopOrderNumber,
+        invoiceType,
+        paymentType,
+        paymentGatewayCode,
+        paymentGatewayName,
+        userId: req.user.id,
+        brutto,
+        netto,
+        taxValue,
+        currency,
+        taxesIncluded,
+        dueDate: dueDate ? new Date(dueDate) : null,
+        validTo: validTo ? new Date(validTo) : null,
+        billingAddressId,
+        shippingAddressId,
+        customerLocale,
+        termsHR,
+        termsEN,
+        termsDE,
+        internalNote,
+        discountValue,
+        shippingCost,
         items: {
           create: items.map((item) => ({
-            articleId: item.articleId,
+            name: item.name,
+            description: item.description,
+            lineItemId: item.lineItemId,
             quantity: item.quantity,
             price: item.price,
+            taxRate: item.taxRate,
+            unit: item.unit,
+            articleId: item.articleId,
           })),
         },
       },
-      include: { items: { include: { article: true } } },
+      include: { items: { include: { article: true } }, user: true },
     });
 
     // Auto-create transaction
-    await prisma.transaction.create({
-      data: {
-        receiptId: receipt.id,
-        userId: req.user.id,
-        amount: ukupno,
-      },
-    });
+    if (!internalNote?.includes("STORNO")) {
+      await prisma.transaction.create({
+        data: {
+          receiptId: receipt.id,
+          userId: req.user.id,
+          amount: brutto,
+        },
+      });
+    }
 
     res.status(201).json(receipt);
   } catch (error) {
@@ -209,12 +330,78 @@ app.post("/api/receipts", requireAuth, async (req, res) => {
 app.put("/api/receipts/:id/storno", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const receipt = await prisma.receipt.update({
+    
+    // Get the original receipt
+    const originalReceipt = await prisma.receipt.findUnique({
+      where: { id },
+      include: { items: true },
+    });
+
+    if (!originalReceipt) {
+      return res.status(404).json({ error: "Receipt not found" });
+    }
+
+    // Mark original as cancelled
+    await prisma.receipt.update({
       where: { id },
       data: { isCancelled: true },
+    });
+
+    // Create cancellation receipt with negative values
+    const stornoReceipt = await prisma.receipt.create({
+      data: {
+        receiptNumber: `${originalReceipt.receiptNumber}-STORNO`,
+        webshopOrderId: originalReceipt.webshopOrderId,
+        webshopType: originalReceipt.webshopType,
+        webshopEvent: originalReceipt.webshopEvent,
+        webshopOrderNumber: originalReceipt.webshopOrderNumber,
+        invoiceType: originalReceipt.invoiceType,
+        paymentType: originalReceipt.paymentType,
+        paymentGatewayCode: originalReceipt.paymentGatewayCode,
+        paymentGatewayName: originalReceipt.paymentGatewayName,
+        userId: req.user.id,
+        brutto: -originalReceipt.brutto,
+        netto: -originalReceipt.netto,
+        taxValue: -originalReceipt.taxValue,
+        currency: originalReceipt.currency,
+        taxesIncluded: originalReceipt.taxesIncluded,
+        dueDate: originalReceipt.dueDate,
+        validTo: originalReceipt.validTo,
+        billingAddressId: originalReceipt.billingAddressId,
+        shippingAddressId: originalReceipt.shippingAddressId,
+        customerLocale: originalReceipt.customerLocale,
+        termsHR: originalReceipt.termsHR,
+        termsEN: originalReceipt.termsEN,
+        termsDE: originalReceipt.termsDE,
+        internalNote: `STORNO of ${originalReceipt.receiptNumber}`,
+        discountValue: originalReceipt.discountValue,
+        shippingCost: originalReceipt.shippingCost,
+        items: {
+          create: originalReceipt.items.map((item) => ({
+            name: item.name,
+            description: item.description,
+            lineItemId: item.lineItemId,
+            quantity: item.quantity,
+            price: -item.price,
+            taxRate: item.taxRate,
+            unit: item.unit,
+            articleId: item.articleId,
+          })),
+        },
+      },
       include: { items: { include: { article: true } } },
     });
-    res.json(receipt);
+
+    // Create transaction for storno
+    await prisma.transaction.create({
+      data: {
+        receiptId: stornoReceipt.id,
+        userId: req.user.id,
+        amount: -originalReceipt.brutto,
+      },
+    });
+
+    res.json(stornoReceipt);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -223,9 +410,68 @@ app.put("/api/receipts/:id/storno", requireAuth, async (req, res) => {
 app.put("/api/receipts/:id", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { broj, nacinPlacanja, items } = req.body;
+    const { 
+      receiptNumber, 
+      webshopOrderId,
+      webshopType,
+      webshopEvent,
+      webshopOrderNumber,
+      invoiceType, 
+      paymentType,
+      paymentGatewayCode,
+      paymentGatewayName,
+      brutto, 
+      netto, 
+      taxValue,
+      currency,
+      taxesIncluded,
+      dueDate,
+      validTo,
+      billingAddress,
+      shippingAddress,
+      customerLocale,
+      termsHR,
+      termsEN,
+      termsDE,
+      internalNote,
+      discountValue,
+      shippingCost,
+      items 
+    } = req.body;
     
-    const ukupno = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    // Create or update billing address if provided
+    let billingAddressId = null;
+    if (billingAddress) {
+      if (billingAddress.id) {
+        await prisma.billingAddress.update({
+          where: { id: billingAddress.id },
+          data: billingAddress,
+        });
+        billingAddressId = billingAddress.id;
+      } else {
+        const createdBillingAddress = await prisma.billingAddress.create({
+          data: billingAddress,
+        });
+        billingAddressId = createdBillingAddress.id;
+      }
+    }
+
+    // Create or update shipping address if provided
+    let shippingAddressId = null;
+    if (shippingAddress) {
+      if (shippingAddress.id) {
+        await prisma.shippingAddress.update({
+          where: { id: shippingAddress.id },
+          data: shippingAddress,
+        });
+        shippingAddressId = shippingAddress.id;
+      } else {
+        const createdShippingAddress = await prisma.shippingAddress.create({
+          data: shippingAddress,
+        });
+        shippingAddressId = createdShippingAddress.id;
+      }
+    }
     
     // Remove old items
     await prisma.receiptItem.deleteMany({ where: { receiptId: id } });
@@ -233,14 +479,41 @@ app.put("/api/receipts/:id", requireAuth, async (req, res) => {
     const receipt = await prisma.receipt.update({
       where: { id },
       data: {
-        broj,
-        nacinPlacanja,
-        ukupno,
+        receiptNumber,
+        webshopOrderId,
+        webshopType,
+        webshopEvent,
+        webshopOrderNumber,
+        invoiceType,
+        paymentType,
+        paymentGatewayCode,
+        paymentGatewayName,
+        brutto,
+        netto,
+        taxValue,
+        currency,
+        taxesIncluded,
+        dueDate: dueDate ? new Date(dueDate) : null,
+        validTo: validTo ? new Date(validTo) : null,
+        billingAddressId,
+        shippingAddressId,
+        customerLocale,
+        termsHR,
+        termsEN,
+        termsDE,
+        internalNote,
+        discountValue,
+        shippingCost,
         items: {
           create: items.map((item) => ({
-            articleId: item.articleId,
+            name: item.name,
+            description: item.description,
+            lineItemId: item.lineItemId,
             quantity: item.quantity,
             price: item.price,
+            taxRate: item.taxRate,
+            unit: item.unit,
+            articleId: item.articleId,
           })),
         },
       },
@@ -287,7 +560,7 @@ app.get("/api/transactions", requireAuth, async (req, res) => {
 app.get("/api/reports", requireAuth, async (req, res) => {
   try {
     const reports = await prisma.salesReport.findMany({
-      orderBy: { datum: "desc" },
+      orderBy: { createdAt: "desc" },
     });
     res.json(reports);
   } catch (error) {
@@ -300,9 +573,9 @@ app.post("/api/reports", requireAuth, async (req, res) => {
     return res.status(403).json({ error: "Unauthorized" });
   }
   try {
-    const { datum, ukupnoProdano, brojRacuna, opis } = req.body;
+    const { date, totalSalesAmount, invoiceCount, description } = req.body;
     const report = await prisma.salesReport.create({
-      data: { datum: new Date(datum), ukupnoProdano, brojRacuna, opis },
+      data: { date: new Date(date), totalSalesAmount, invoiceCount, description },
     });
     res.status(201).json(report);
   } catch (error) {

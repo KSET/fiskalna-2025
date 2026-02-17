@@ -8,11 +8,11 @@ export default function Artikli() {
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
-    code: "",
-    kpdSifra: "",
-    brutIznos: 0,
-    pdv: 0,
-    opis: "",
+    productCode: "",
+    kpdCode: "",
+    price: 0,
+    taxRate: 0,
+    description: "",
     active: true,
   });
 
@@ -37,11 +37,11 @@ export default function Artikli() {
   const resetForm = () => {
     setFormData({
       name: "",
-      code: "",
-      kpdSifra: "",
-      brutIznos: 0,
-      pdv: 0,
-      opis: "",
+      productCode: "",
+      kpdCode: "",
+      price: 0,
+      taxRate: 0,
+      description: "",
       active: true,
     });
     setEditingId(null);
@@ -144,8 +144,8 @@ export default function Artikli() {
             <label>Kod:</label>
             <input
               type="text"
-              value={formData.code}
-              onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+              value={formData.productCode}
+              onChange={(e) => setFormData({ ...formData, productCode: e.target.value })}
               required
             />
           </div>
@@ -153,8 +153,8 @@ export default function Artikli() {
             <label>KPD Šifra:</label>
             <input
               type="text"
-              value={formData.kpdSifra}
-              onChange={(e) => setFormData({ ...formData, kpdSifra: e.target.value })}
+              value={formData.kpdCode}
+              onChange={(e) => setFormData({ ...formData, kpdCode: e.target.value })}
               required
             />
           </div>
@@ -163,9 +163,9 @@ export default function Artikli() {
             <input
               type="number"
               step="0.01"
-              value={formData.brutIznos}
+              value={formData.price}
               onChange={(e) =>
-                setFormData({ ...formData, brutIznos: parseFloat(e.target.value) })
+                setFormData({ ...formData, price: parseFloat(e.target.value) })
               }
               required
             />
@@ -175,16 +175,16 @@ export default function Artikli() {
             <input
               type="number"
               step="0.01"
-              value={formData.pdv}
-              onChange={(e) => setFormData({ ...formData, pdv: parseFloat(e.target.value) })}
+              value={formData.taxRate}
+              onChange={(e) => setFormData({ ...formData, taxRate: parseFloat(e.target.value) })}
               required
             />
           </div>
           <div className="form-group">
             <label>Opis:</label>
             <textarea
-              value={formData.opis}
-              onChange={(e) => setFormData({ ...formData, opis: e.target.value })}
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             ></textarea>
           </div>
           <div className="form-group">
@@ -230,10 +230,10 @@ export default function Artikli() {
             {articles.map(article => (
               <tr key={article.id} className={!article.active ? "inactive" : ""}>
                 <td>{article.name}</td>
-                <td>{article.code}</td>
-                <td>{article.kpdSifra}</td>
-                <td>€{article.brutIznos.toFixed(2)}</td>
-                <td>{article.pdv}%</td>
+                <td>{article.productCode}</td>
+                <td>{article.kpdCode}</td>
+                <td>€{article.price.toFixed(2)}</td>
+                <td>{article.taxRate}%</td>
                 <td>
                   <span className={`badge-${article.active ? "success" : "danger"}`}>
                     {article.active ? "Aktivan" : "Neaktivan"}

@@ -40,7 +40,7 @@ export default function Povijest() {
   const filteredTransactions = transactions.filter(t => {
     if (!filter) return true;
     return (
-      t.receipt?.broj?.toLowerCase().includes(filter.toLowerCase()) ||
+      t.receipt?.receiptNumber?.toLowerCase().includes(filter.toLowerCase()) ||
       t.user?.name?.toLowerCase().includes(filter.toLowerCase())
     );
   });
@@ -119,7 +119,7 @@ export default function Povijest() {
                     {transaction.id.slice(0, 8)}...
                   </td>
                   <td style={{ padding: '12px', color: '#333' }}>
-                    {transaction.receipt?.broj || "N/A"}
+                    {transaction.receipt?.receiptNumber || "N/A"}
                   </td>
                   <td style={{ padding: '12px', color: '#333', textAlign: 'right' }}>
                     €{transaction.amount.toFixed(2)}
