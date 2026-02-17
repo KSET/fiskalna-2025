@@ -3,6 +3,7 @@ import "../../styles/Pages.css";
 
 export default function Artikli() {
   const [articles, setArticles] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -13,11 +14,13 @@ export default function Artikli() {
     price: 0,
     taxRate: 0,
     description: "",
+    categoryId: "",
     active: true,
   });
 
   useEffect(() => {
     fetchArticles();
+    fetchCategories();
   }, []);
 
   const fetchArticles = async () => {
@@ -34,6 +37,16 @@ export default function Artikli() {
     }
   };
 
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch("http://localhost:3000/api/categories", { credentials: "include" });
+      const data = await response.json();
+      if (Array.isArray(data)) setCategories(data);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       name: "",
@@ -42,6 +55,7 @@ export default function Artikli() {
       price: 0,
       taxRate: 0,
       description: "",
+      categoryId: "",
       active: true,
     });
     setEditingId(null);
@@ -74,7 +88,7 @@ export default function Artikli() {
   };
 
   const handleEdit = (article) => {
-    setFormData(article);
+    setFormData({ ...article, categoryId: article.categoryId || "" });
     setEditingId(article.id);
     setShowForm(true);
   };
@@ -188,6 +202,18 @@ export default function Artikli() {
             ></textarea>
           </div>
           <div className="form-group">
+            <label>Kategorija:</label>
+            <select
+              value={formData.categoryId}
+              onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+            >
+              <option value="">-- Odaberi kategoriju --</option>
+              {categories.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
             <label>
               <input
                 type="checkbox"
@@ -222,6 +248,7 @@ export default function Artikli() {
               <th>KPD Šifra</th>
               <th>Cijena (€)</th>
               <th>PDV (%)</th>
+              <th>Kategorija</th>
               <th>Status</th>
               <th>Akcije</th>
             </tr>
@@ -234,6 +261,7 @@ export default function Artikli() {
                 <td>{article.kpdCode}</td>
                 <td>€{article.price.toFixed(2)}</td>
                 <td>{article.taxRate}%</td>
+                <td>{categories.find(c => c.id === article.categoryId)?.name || "-"}</td>
                 <td>
                   <span className={`badge-${article.active ? "success" : "danger"}`}>
                     {article.active ? "Aktivan" : "Neaktivan"}

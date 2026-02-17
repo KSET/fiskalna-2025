@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import "../styles/Pages.css";
 import ReceiptPrintButton from "./admin/Racun";
 
@@ -18,6 +19,7 @@ export default function Prodaja() {
   const [selectedItems, setSelectedItems] = useState([]);
   const [paymentMethod, setPaymentMethod] = useState("Gotovina");
   const [loading, setLoading] = useState(true);
+  const [searchParams] = useSearchParams();
 
 
   useEffect(() => {
@@ -152,14 +154,19 @@ export default function Prodaja() {
 
   if (loading) return <div className="page-container" style={{ color: '#333', padding: '40px 20px' }}>Učitavanje...</div>;
 
+  const categoryId = searchParams.get("category");
+  const filteredArticles = categoryId
+    ? articles.filter(a => a.categoryId == categoryId)
+    : articles;
+
   return (
     <div className="page-container">
       <h1>Prodaja</h1>
       <div className="prodaja-layout">
         <div className="articles-grid">
-          <h2>Dostupni artikli</h2>
+          <h2>{categoryId ? "Artikli u kategoriji" : "Svi artikli"}</h2>
           <div className="grid">
-            {articles.map(article => (
+            {filteredArticles.map(article => (
               <div key={article.id} className="article-card">
                 <h3>{article.name}</h3>
                 <p className="code">Kod: {article.productCode}</p>

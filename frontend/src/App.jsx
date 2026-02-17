@@ -11,7 +11,7 @@ import UkupniIzvjestaj from "./pages/admin/UkupniIzvjestaj";
 import Artikli from "./pages/admin/Artikli";
 import Povijest from "./pages/admin/povijest";
 import Korisnici from "./pages/admin/Korisnici";
-
+import Kategorije from "./pages/admin/Kategorije";
 export default function App() {
   return (
     <BrowserRouter>
@@ -94,6 +94,16 @@ export default function App() {
             <ProtectedRoute>
               <MainLayout>
                 <Povijest />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/kategorije"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <Kategorije />
               </MainLayout>
             </ProtectedRoute>
           }

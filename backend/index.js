@@ -100,6 +100,18 @@ app.get("/protected", requireAuth, (req, res) => {
 app.get("/api/articles", requireAuth, async (req, res) => {
   try {
     const articles = await prisma.article.findMany({
+      where: {
+        OR: [
+          { categoryId: null }, // Show articles with no category
+          {
+            category: {
+              active: true // ONLY show if the linked category is active
+            }
+          }
+        ],
+        active: true // Optional: Also check if the article itself is active
+      },
+      include: { category: true }, // Include category details in the response
       orderBy: { createdAt: "desc" },
     });
     res.json(articles);
@@ -125,18 +137,29 @@ app.post("/api/articles", requireAuth, async (req, res) => {
 });
 
 app.put("/api/articles/:id", requireAuth, async (req, res) => {
-  if (req.user.role !== "ADMIN") {
-    return res.status(403).json({ error: "Unauthorized" });
-  }
+  if (req.user.role !== "ADMIN") return res.status(403).json({ error: "Unauthorized" });
+
   try {
     const { id } = req.params;
-    const { name, productCode, kpdCode, price, taxRate, description, unit, active } = req.body;
+    const { name, productCode, kpdCode, price, taxRate, description, unit, active, categoryId } = req.body;
+
     const article = await prisma.article.update({
       where: { id },
-      data: { name, productCode, kpdCode, price, taxRate, description, unit, active },
+      data: { 
+        name, 
+        productCode, 
+        kpdCode, 
+        price, 
+        taxRate, 
+        description, 
+        unit, 
+        active,
+        categoryId: categoryId || null
+      },
     });
     res.json(article);
   } catch (error) {
+    console.error("Update Article Error:", error);
     res.status(400).json({ error: error.message });
   }
 });
@@ -649,7 +672,59 @@ app.delete("/api/users/:id", requireAuth, async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 });
+// ========== CATEGORIES API ==========
+app.get("/api/categories", requireAuth, async (req, res) => {
+  try {
+    const { onlyActive } = req.query;
+    const where = onlyActive === 'true' ? { active: true } : {};
 
+    const categories = await prisma.category.findMany({
+      where,
+      orderBy: { name: "asc" },
+    });
+    res.json(categories);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/categories", requireAuth, async (req, res) => {
+  if (req.user.role !== "ADMIN") return res.status(403).json({ error: "Unauthorized" });
+  try {
+    const { name, active } = req.body;
+    const category = await prisma.category.create({
+      data: { name, active },
+    });
+    res.status(201).json(category);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.put("/api/categories/:id", requireAuth, async (req, res) => {
+  if (req.user.role !== "ADMIN") return res.status(403).json({ error: "Unauthorized" });
+  try {
+    const { id } = req.params;
+    const { name, active } = req.body;
+    const category = await prisma.category.update({
+      where: { id },
+      data: { name, active },
+    });
+    res.json(category);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.delete("/api/categories/:id", requireAuth, async (req, res) => {
+  if (req.user.role !== "ADMIN") return res.status(403).json({ error: "Unauthorized" });
+  try {
+    await prisma.category.delete({ where: { id: req.params.id } });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log("\n========================================");
