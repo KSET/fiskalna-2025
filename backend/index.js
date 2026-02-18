@@ -99,18 +99,24 @@ app.get("/protected", requireAuth, (req, res) => {
 // ========== ARTICLES API ==========
 app.get("/api/articles", requireAuth, async (req, res) => {
   try {
-    const articles = await prisma.article.findMany({
-      where: {
-        OR: [
-          { categoryId: null }, // Show articles with no category
-          {
-            category: {
-              active: true // ONLY show if the linked category is active
-            }
+    // Admins see ALL articles (active and inactive)
+    // Regular users only see active articles from active categories
+    const isAdmin = req.user.role === "ADMIN";
+
+    const whereClause = isAdmin ? {} : {
+      OR: [
+        { categoryId: null }, // Show articles with no category
+        {
+          category: {
+            active: true // ONLY show if the linked category is active
           }
-        ],
-        active: true // Optional: Also check if the article itself is active
-      },
+        }
+      ],
+      active: true // Only show active articles for non-admins
+    };
+
+    const articles = await prisma.article.findMany({
+      where: whereClause,
       include: { category: true }, // Include category details in the response
       orderBy: { createdAt: "desc" },
     });
@@ -367,13 +373,14 @@ app.put("/api/receipts/:id/storno", requireAuth, async (req, res) => {
     // Mark original as cancelled
     await prisma.receipt.update({
       where: { id },
-      data: { isCancelled: true },
+      data: { status: 'RACUN_STORNIRAN' },
     });
 
-    // Create cancellation receipt with negative values
+    // Create cancellation receipt with negative values and unique receipt number
     const stornoReceipt = await prisma.receipt.create({
       data: {
-        receiptNumber: `${originalReceipt.receiptNumber}-STORNO`,
+        receiptNumber: `RCN-${Date.now()}`,
+        status: 'STORNO',
         webshopOrderId: originalReceipt.webshopOrderId,
         webshopType: originalReceipt.webshopType,
         webshopEvent: originalReceipt.webshopEvent,

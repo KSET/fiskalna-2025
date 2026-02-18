@@ -102,19 +102,20 @@ export default function Prodaja() {
 
     try {
       const receiptNumber = `RCN-${Date.now()}`;
-      
+
       // Calculate totals
       const brutto = selectedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
       const netto = 0; // Calculate based on tax rates
       const taxValue = 0; // Calculate based on tax rates
-      
+
       // Validate payment type is uppercase
       const paymentTypeMap = {
         "Gotovina": "GOTOVINA",
+        "Kartica": "KARTICA",
         "Kartica": "KARTICA"
       };
       const paymentTypeValue = paymentTypeMap[paymentMethod] || "GOTOVINA";
-      
+
       const response = await fetch("http://localhost:3000/api/receipts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -141,14 +142,23 @@ export default function Prodaja() {
 
       if (response.ok) {
         alert("Račun je uspješno kreiran!");
-        setSelectedItems([]);
+        return true;
       } else {
         const error = await response.json();
         alert("Greška: " + (error.error || "Nepoznata greška"));
+        return false;
       }
     } catch (error) {
       console.error("Error creating receipt:", error);
       alert("Greška pri kreiranju računa: " + error.message);
+      return false;
+    }
+  };
+
+  const handleFiskaliziraj = async (printFunction) => {
+    const success = await handleCheckout();
+    if (success) {
+      printFunction();
     }
   };
 
@@ -167,14 +177,16 @@ export default function Prodaja() {
           <h2>{categoryId ? "Artikli u kategoriji" : "Svi artikli"}</h2>
           <div className="grid">
             {filteredArticles.map(article => (
-              <div key={article.id} className="article-card">
+              <div
+                key={article.id}
+                className="article-card"
+                onClick={() => addItem(article)}
+                style={{ cursor: 'pointer' }}
+              >
                 <h3>{article.name}</h3>
                 <p className="code">Kod: {article.productCode}</p>
-                <p className="price">€{article.price.toFixed(2)}</p>
-                <p className="desc">{article.description}</p>
-                <button onClick={() => addItem(article)} className="btn-primary">
-                  Dodaj
-                </button>
+                <p className="price"><span className="currency">{article.price.toFixed(2)}</span></p>
+                {article.description && <p className="desc">{article.description}</p>}
               </div>
             ))}
           </div>
@@ -191,7 +203,7 @@ export default function Prodaja() {
                   <div key={item.articleId} className="cart-item">
                     <div>
                       <strong>{item.name}</strong>
-                      <p>€{item.price.toFixed(2)} x</p>
+                      <p><span className="currency">{item.price.toFixed(2)}</span> x</p>
                     </div>
                     <div className="quantity-control">
                       <button onClick={() => updateQuantity(item.articleId, item.quantity - 1)} style={{ color: "black" }}>
@@ -208,7 +220,7 @@ export default function Prodaja() {
                       </button>
                     </div>
                     <div className="item-total">
-                      €{(item.price * item.quantity).toFixed(2)}
+                      <span className="currency">{(item.price * item.quantity).toFixed(2)}</span>
                     </div>
                     <button onClick={() => removeItem(item.articleId)} className="btn-danger">
                       ✕
@@ -225,40 +237,36 @@ export default function Prodaja() {
                     onChange={(e) => setPaymentMethod(e.target.value)}
                   >
                     <option>Gotovina</option>
-                    <option>Karticom</option>
+                    <option>Kartica</option>
                   </select>
                 </div>
 
                 <div className="total">
-                  <strong>Ukupno: €{total.toFixed(2)}</strong>
+                  <strong>Ukupno: <span className="currency">{total.toFixed(2)}</span></strong>
                 </div>
 
-                <button onClick={handleCheckout} className="btn-success">
-                  Završi Prodaju
-                </button>
+                <ReceiptPrintButton
+                  order={{
+                    num: `RCN-${Date.now()}`,
+                    payment: paymentMethod,
+                    items: selectedItems,
+                    time: CroatianDateTime(),
+                    cashier: "doria",
+                    base: 0, // todo
+                    tax: 0,
+                    jir: 4332,
+                    zki: 3924,
+                    link: "https://jobfair.fer.unizg.hr/",
+                    phone: "0916043415",
+                    email: "info@kset.org",
+                  }}
+                  onFiskaliziraj={handleFiskaliziraj}
+                  onAfterPrint={() => setSelectedItems([])}
+                />
+
                 <button onClick={clearCart} className="btn-danger">
                   Isprazni košaricu
                 </button>
-
-                <p></p>
-
-                <ReceiptPrintButton order={{
-                  num: `RCN-${Date.now()}`,
-                  payment: paymentMethod,
-                  items: selectedItems,
-                  time: CroatianDateTime(),
-                  cashier: "doria",
-                  base: 0, // todo 
-                  tax: 0,
-                  jir: 4332,
-                  zki: 3924,
-                  link: "https://jobfair.fer.unizg.hr/",
-                  phone: "0916043415",
-                  email: "info@kset.org",
-                }} ></ReceiptPrintButton>
-                {/* <button onClick={printCart} className="btn-primary" style={{ width: "100%" }}>
-                  Ispiši
-                </button> */}
 
 
               </div>

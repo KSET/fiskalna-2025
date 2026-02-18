@@ -4,7 +4,8 @@ datasource db {
 }
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "linux-musl-arm64-openssl-3.0.x", "linux-musl-arm64-openssl-1.1.x"]
 }
 
 enum UserRole {
@@ -17,6 +18,12 @@ enum PaymentType {
   GOTOVINA
   KARTICA
   TRANSAKCIJSKI
+}
+
+enum ReceiptStatus {
+  RACUN
+  RACUN_STORNIRAN
+  STORNO
 }
 
 model User {
@@ -88,7 +95,7 @@ model Receipt {
   internalNote          String?
   discountValue         Float         @default(0)
   shippingCost          Float         @default(0)
-  isCancelled           Boolean       @default(false)
+  status                ReceiptStatus @default(RACUN)
   items                 ReceiptItem[]
   transaction           Transaction?
   createdAt             DateTime      @default(now())

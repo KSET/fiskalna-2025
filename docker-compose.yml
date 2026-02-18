@@ -16,11 +16,12 @@ services:
       - "3000:3000"
     volumes:
       - ./backend:/app
+      - /app/node_modules
     environment:
       DATABASE_URL: postgresql://app:app@db:5432/appdb
     depends_on:
       - db
-    command: npm run dev
+    command: sh -c "npx prisma generate && npx prisma migrate deploy && npm run dev"
 
   frontend:
     build: ./frontend
@@ -28,6 +29,7 @@ services:
       - "5173:5173"
     volumes:
       - ./frontend:/app
+      - /app/node_modules
     depends_on:
       - backend
     command: npm run dev

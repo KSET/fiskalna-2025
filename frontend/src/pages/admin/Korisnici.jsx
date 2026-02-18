@@ -92,22 +92,15 @@ export default function Korisnici() {
 
   return (
     <div className="page-container">
-      <h1>Upravljanje Korisnicima</h1>
-
-      <button 
-        onClick={() => setShowNewUserForm(true)}
-        style={{
-          background: '#667eea',
-          color: 'white',
-          border: 'none',
-          padding: '10px 20px',
-          borderRadius: '5px',
-          cursor: 'pointer',
-          marginBottom: '20px'
-        }}
-      >
-        + Dodaj novog korisnika
-      </button>
+      <div className="page-header">
+        <h1>Upravljanje Korisnicima</h1>
+        <button
+          onClick={() => setShowNewUserForm(true)}
+          className="btn-primary"
+        >
+          + Dodaj novog korisnika
+        </button>
+      </div>
 
       {showNewUserForm && (
         <div style={{
@@ -274,15 +267,17 @@ export default function Korisnici() {
                     <>
                       <button
                         onClick={() => handleEdit(user)}
-                        className="btn-small btn-primary"
+                        className="icon-btn edit"
+                        title="Uredi"
                       >
-                        Uredi
+                        <i className="fas fa-edit"></i>
                       </button>
                       <button
                         onClick={() => handleDelete(user.id)}
-                        className="btn-small btn-danger"
+                        className="icon-btn delete"
+                        title="Obriši"
                       >
-                        Obriši
+                        <i className="fas fa-trash"></i>
                       </button>
                     </>
                   )}

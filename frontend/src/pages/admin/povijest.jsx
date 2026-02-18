@@ -122,7 +122,7 @@ export default function Povijest() {
                     {transaction.receipt?.receiptNumber || "N/A"}
                   </td>
                   <td style={{ padding: '12px', color: '#333', textAlign: 'right' }}>
-                    €{transaction.amount.toFixed(2)}
+                    <span className="currency">{transaction.amount.toFixed(2)}</span>
                   </td>
                   <td style={{ padding: '12px', color: '#333' }}>
                     {transaction.user?.name || "Nepoznato"}
@@ -152,7 +152,7 @@ export default function Povijest() {
           <strong>Ukupno transakcija:</strong> {filteredTransactions.length}
         </p>
         <p style={{ margin: '8px 0' }}>
-          <strong>Ukupni iznos:</strong> €{filteredTransactions.reduce((sum, t) => sum + t.amount, 0).toFixed(2)}
+          <strong>Ukupni iznos:</strong> <span className="currency">{filteredTransactions.reduce((sum, t) => sum + t.amount, 0).toFixed(2)}</span>
         </p>
       </div>
 

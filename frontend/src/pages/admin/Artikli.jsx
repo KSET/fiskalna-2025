@@ -249,7 +249,7 @@ export default function Artikli() {
               <th>Cijena (€)</th>
               <th>PDV (%)</th>
               <th>Kategorija</th>
-              <th>Status</th>
+              <th>Aktivan</th>
               <th>Akcije</th>
             </tr>
           </thead>
@@ -259,32 +259,33 @@ export default function Artikli() {
                 <td>{article.name}</td>
                 <td>{article.productCode}</td>
                 <td>{article.kpdCode}</td>
-                <td>€{article.price.toFixed(2)}</td>
+                <td><span className="currency">{article.price.toFixed(2)}</span></td>
                 <td>{article.taxRate}%</td>
                 <td>{categories.find(c => c.id === article.categoryId)?.name || "-"}</td>
                 <td>
-                  <span className={`badge-${article.active ? "success" : "danger"}`}>
-                    {article.active ? "Aktivan" : "Neaktivan"}
-                  </span>
+                  <label className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={article.active}
+                      onChange={() => toggleActive(article.id, article.active)}
+                    />
+                    <span className="toggle-slider"></span>
+                  </label>
                 </td>
                 <td className="actions">
                   <button
                     onClick={() => handleEdit(article)}
-                    className="btn-small btn-primary"
+                    className="icon-btn edit"
+                    title="Uredi"
                   >
-                    Uredi
-                  </button>
-                  <button
-                    onClick={() => toggleActive(article.id, article.active)}
-                    className={`btn-small ${article.active ? "btn-warning" : "btn-info"}`}
-                  >
-                    {article.active ? "Deaktiviraj" : "Aktiviraj"}
+                    <i className="fas fa-edit"></i>
                   </button>
                   <button
                     onClick={() => handleDelete(article.id)}
-                    className="btn-small btn-danger"
+                    className="icon-btn delete"
+                    title="Obriši"
                   >
-                    Obriši
+                    <i className="fas fa-trash"></i>
                   </button>
                 </td>
               </tr>

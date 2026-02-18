@@ -5,7 +5,6 @@ import "./Sidebar.css";
 export default function Sidebar() {
   const location = useLocation();
   const [user, setUser] = useState(null);
-  const [expandAdmin, setExpandAdmin] = useState(false);
   const [categories, setCategories] = useState([]);
 
   useEffect(() => {
@@ -74,54 +73,45 @@ export default function Sidebar() {
 
         {user && user.role === "ADMIN" && (
           <div className="nav-section admin-section">
-            <button
-              className="admin-toggle"
-              onClick={() => setExpandAdmin(!expandAdmin)}
+            <h3 className="section-title">Admin</h3>
+            <Link
+              to="/admin/ukupni-izvjestaj"
+              className={`nav-link ${
+                isActive("/admin/ukupni-izvjestaj") ? "active" : ""
+              }`}
             >
-              Admin {expandAdmin ? "▼" : "▶"}
-            </button>
-            {expandAdmin && (
-              <>
-                <Link
-                  to="/admin/ukupni-izvjestaj"
-                  className={`nav-link ${
-                    isActive("/admin/ukupni-izvjestaj") ? "active" : ""
-                  }`}
-                >
-                  Ukupni izvještaj
-                </Link>
-                <Link
-                  to="/admin/artikli"
-                  className={`nav-link ${
-                    isActive("/admin/artikli") ? "active" : ""
-                  }`}
-                >
-                  Artikli
-                </Link>
-                <Link
-                  to="/admin/kategorije"
-                  className={`nav-link ${isActive("/admin/kategorije") ? "active" : ""}`}
-                >
-                  Kategorije
-                </Link>
-                <Link
-                  to="/admin/povijest"
-                  className={`nav-link ${
-                    isActive("/admin/povijest") ? "active" : ""
-                  }`}
-                >
-                  Povijest transakcija
-                </Link>
-                <Link
-                  to="/admin/korisnici"
-                  className={`nav-link ${
-                    isActive("/admin/korisnici") ? "active" : ""
-                  }`}
-                >
-                  Korisnici
-                </Link>
-              </>
-            )}
+              Ukupni izvještaj
+            </Link>
+            <Link
+              to="/admin/artikli"
+              className={`nav-link ${
+                isActive("/admin/artikli") ? "active" : ""
+              }`}
+            >
+              Artikli
+            </Link>
+            <Link
+              to="/admin/kategorije"
+              className={`nav-link ${isActive("/admin/kategorije") ? "active" : ""}`}
+            >
+              Kategorije
+            </Link>
+            <Link
+              to="/admin/povijest"
+              className={`nav-link ${
+                isActive("/admin/povijest") ? "active" : ""
+              }`}
+            >
+              Povijest transakcija
+            </Link>
+            <Link
+              to="/admin/korisnici"
+              className={`nav-link ${
+                isActive("/admin/korisnici") ? "active" : ""
+              }`}
+            >
+              Korisnici
+            </Link>
           </div>
         )}
       </nav>

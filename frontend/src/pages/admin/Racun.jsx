@@ -91,7 +91,7 @@ ZKI: ${order.zki}
 };
 
 
-const ReceiptPrintButton = ({ order, onAfterPrint }) => {
+const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj }) => {
    const receiptRef = useRef();
 
    const printaj = () => {
@@ -102,9 +102,17 @@ const ReceiptPrintButton = ({ order, onAfterPrint }) => {
       w.document.close();
       w.print();
       w.close();
-      
+
       if (onAfterPrint) {
         setTimeout(onAfterPrint, 500); //MORA BITI DELAY INACE NE RADI
+      }
+   };
+
+   const handleClick = () => {
+      if (onFiskaliziraj) {
+         onFiskaliziraj(printaj);
+      } else {
+         printaj();
       }
    };
 
@@ -117,9 +125,10 @@ const ReceiptPrintButton = ({ order, onAfterPrint }) => {
          </div>
 
          <button
-            onClick={printaj}
+            onClick={handleClick}
+            className={onFiskaliziraj ? "btn-success" : ""}
          >
-            Ispiši
+            {onFiskaliziraj ? "Fiskaliziraj" : "Ispiši"}
          </button>
       </div>
    );

@@ -221,7 +221,7 @@ ZKI: ${order.zki}
           <thead>
             <tr>
               <th>Broj računa</th>
-              <th>Datum</th>
+              <th>Datum i vrijeme</th>
               <th>Način plaćanja</th>
               <th>Ukupno</th>
               <th>Kreirano od</th>
@@ -230,38 +230,49 @@ ZKI: ${order.zki}
             </tr>
           </thead>
           <tbody>
-            {filteredReceipts.map(receipt => (
-              <tr key={receipt.id} className={receipt.isCancelled ? "cancelled" : ""}>
-                <td>{receipt.receiptNumber}</td>
-                <td>{new Date(receipt.createdAt).toLocaleDateString("hr-HR")}</td>
-                <td>{receipt.paymentType}</td>
-                <td>€{receipt.brutto.toFixed(2)}</td>
-                <td>{receipt.user?.name || "N/A"}</td>
-                <td>
-                  {receipt.isCancelled ? (
-                    <span className="badge-danger">Otkazan</span>
-                  ) : (
-                    <span className="badge-success">Aktivan</span>
-                  )}
-                </td>
-                <td className="actions">
-                  <button
-                    onClick={() => handlePrint(receipt.id)}
-                    className="btn-small btn-primary"
-                  >
-                    Ispiši
-                  </button>
-                  {!receipt.isCancelled && (
+            {filteredReceipts.map(receipt => {
+              const rowClass = receipt.status === 'RACUN_STORNIRAN' ? 'cancelled'
+                             : receipt.status === 'STORNO' ? 'storno'
+                             : '';
+              return (
+                <tr key={receipt.id} className={rowClass}>
+                  <td>{receipt.receiptNumber}</td>
+                  <td>
+                    {new Date(receipt.createdAt).toLocaleDateString("hr-HR")} {new Date(receipt.createdAt).toLocaleTimeString("hr-HR", {hour: '2-digit', minute: '2-digit'})}
+                  </td>
+                  <td>{receipt.paymentType}</td>
+                  <td><span className="currency">{receipt.brutto.toFixed(2)}</span></td>
+                  <td>{receipt.user?.name || "N/A"}</td>
+                  <td>
+                    {receipt.status === 'STORNO' && (
+                      <span className="badge-danger">Storno</span>
+                    )}
+                    {receipt.status === 'RACUN_STORNIRAN' && (
+                      <span className="badge-danger">Otkazan</span>
+                    )}
+                    {receipt.status === 'RACUN' && (
+                      <span className="badge-success">Aktivan</span>
+                    )}
+                  </td>
+                  <td className="actions">
                     <button
-                      onClick={() => handleStorno(receipt.id)}
-                      className="btn-small btn-danger"
+                      onClick={() => handlePrint(receipt.id)}
+                      className="btn-small btn-primary"
                     >
-                      Storno
+                      Ispiši
                     </button>
-                  )}
-                </td>
-              </tr>
-            ))}
+                    {receipt.status === 'RACUN' && (
+                      <button
+                        onClick={() => handleStorno(receipt.id)}
+                        className="btn-small btn-danger"
+                      >
+                        Storno
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
