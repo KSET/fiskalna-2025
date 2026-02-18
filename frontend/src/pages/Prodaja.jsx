@@ -111,9 +111,8 @@ export default function Prodaja() {
       // Validate payment type is uppercase
       const paymentTypeMap = {
         "Gotovina": "GOTOVINA",
-        "Kartica": "KARTICA",
         "Kartica": "KARTICA"
-      };
+        };
       const paymentTypeValue = paymentTypeMap[paymentMethod] || "GOTOVINA";
 
       const response = await fetch("http://localhost:3000/api/receipts", {
