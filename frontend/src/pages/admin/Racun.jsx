@@ -1,77 +1,83 @@
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { QRCodeSVG } from "qrcode.react";
+
 
 const Receipt = ({ order }) => {
   if (!order || !order.items) return null;
+   if (!order.items) return null;
 
-  const line = "-".repeat(42);
-  
-  const padLeft = (text, width) => {
-    const s = String(text);
-    return s.length >= width ? s.slice(0, width) : " ".repeat(width - s.length) + s;
-  };
+   const W = 42;
+   const line = "─".repeat(W);
+   const center = (text) => {
+      const pad = Math.max(0, Math.floor((W - text.length) / 2));
+      return " ".repeat(pad) + text;
+   };
+   const total = order.items.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
-  const maxNameWidth = 14; 
-  const maxLastNameWidth = 7; 
+   const COL_NAME = 20;
+   const COL_QTY  = 4;
+   const COL_PRC  = 7;
+   const COL_TOT  = 7;
 
-  const wrapText = (text, width, lastWidth) => {
-    const lines = [];
-    let start = 0;
-    const str = String(text);
-    while (str.length - start >= width) {
-      lines.push(str.slice(start, start + width));
-      start += width;
-    }
-    lines.push(str.slice(start, Math.min(start + lastWidth, str.length)));
-    return lines;
-  };
+   const rpad = (s, n) => s.length >= n ? s.slice(0, n) : s + " ".repeat(n - s.length);
+   const lpad = (s, n) => s.length >= n ? s.slice(0, n) : " ".repeat(n - s.length) + s;
 
-  // --- Group Taxes by Rate ---
-  const taxGroups = order.items.reduce((groups, item) => {
-    const rate = Number(item.taxRate || 0);
-    const brutto = Number(item.price) * Number(item.quantity);
-    const netto = brutto / (1 + rate / 100);
-    const taxValue = brutto - netto;
+   const itemLines = order.items.map(item => {
+      const name = item.name || "";
+      const qty  = item.quantity.toString();
+      const prc  = item.price.toFixed(2);
+      const tot  = (item.price * item.quantity).toFixed(2);
 
-    if (!groups[rate]) {
-      groups[rate] = { base: 0, tax: 0 };
-    }
-    groups[rate].base += netto;
-    groups[rate].tax += taxValue;
-    return groups;
-  }, {});
+      const nameChunks = [];
+      for (let i = 0; i < name.length; i += COL_NAME) {
+         nameChunks.push(name.slice(i, i + COL_NAME));
+      }
+      if (nameChunks.length === 0) nameChunks.push("");
 
-  return (
-    <div className="receipt-container">
-      <pre className="receipt-text">
-{`
-Telefon: ${order.phone || ""}
-E-mail: ${order.email || ""}
+      return nameChunks.map((chunk, i) => {
+         if (i < nameChunks.length - 1) {
+            return rpad(chunk, COL_NAME) + " " + " ".repeat(COL_QTY) + " " + " ".repeat(COL_PRC) + " " + " ".repeat(COL_TOT);
+         }
+         return rpad(chunk, COL_NAME) + " " + lpad(qty, COL_QTY) + " " + lpad(prc, COL_PRC) + " " + lpad(tot, COL_TOT);
+      }).join("\n");
+   }).join("\n");
 
-Račun br: ${order.num}
-Vrijeme: ${order.time}
-Blagajnik: ${order.cashier}
+   const s = {
+      wrap:   { fontFamily: "'Courier New', Courier, monospace", fontSize: "11px", width: "72mm", margin: "0 auto", color: "#000", background: "#fff", padding: "4mm 2mm" },
+      center: { textAlign: "center" },
+      big:    { fontSize: "15px", fontWeight: "bold" },
+      pre:    { fontFamily: "inherit", fontSize: "inherit", margin: "0", whiteSpace: "pre", lineHeight: "1.35" },
+      qr:     { textAlign: "center", marginTop: "6px" },
+   };
 
-Artikl${" ".repeat(2)}Kol.${" ".repeat(4)}Cijena${" ".repeat(4)}Iznos
+   return (
+      <div style={s.wrap}>
+         <div style={{ ...s.center, marginBottom: "4px" }}>
+            <div style={s.big}>SS FER</div>
+            <div>Unska 3, 10000 Zagreb, Hrvatska</div>
+            <div>blagajnik@kset.org</div>
+            <div>OIB: 14504100762</div>
+         </div>
+
+         <pre style={s.pre}>{line}</pre>
+
+         <pre style={s.pre}>{
+`Telefon: ${order.phone}
+E-mail:  ${order.email}
 ${line}
-${order.items.map(item => {
-    const nameLines = wrapText(item.name, maxNameWidth, maxLastNameWidth);
-    return nameLines
-      .map((lineText, index) => {
-        if (index === nameLines.length - 1) {
-          return `${lineText.padEnd(maxLastNameWidth)} ${padLeft(item.quantity.toString(), 4)}  ${padLeft(Number(item.price).toFixed(2), 8)}  ${padLeft((Number(item.price) * Number(item.quantity)).toFixed(2), 7)}`;
-        } else {
-          return lineText;
-        }
-      })
-      .join("\n");
-}).join("\n")}
+Račun br:         ${order.num}
+Vrijeme:          ${order.time}
+Blagajnik:        ${order.cashier}
 ${line}
-UKUPNO${padLeft(Number(order.total || 0).toFixed(2) + " €", 25)}
+${rpad("Naziv", COL_NAME)} ${lpad("Kol.", COL_QTY)} ${lpad("Cij.", COL_PRC)} ${lpad("Iznos", COL_TOT)}
+${line}
+${itemLines}
+${line}
+${rpad("UKUPNO", W - COL_TOT - 1)}${lpad(total.toFixed(2) + " \u20ac", COL_TOT + 1)}
 ${line}
 Način plaćanja: ${order.payment}
 ${line}
-Porez      %  Osnovica    Iznos
+Porez  %   Osnovica     Iznos
 ${line}
 ${Object.entries(taxGroups).map(([rate, values]) => {
     return `PDV ${padLeft(rate + "%", 9)}  ${padLeft(values.base.toFixed(2), 8)}  ${padLeft(values.tax.toFixed(2), 7)}`;
@@ -81,72 +87,54 @@ ${line}
 JIR: ${order.jir || "N/A"}
 ZKI: ${order.zki || "N/A"}
 
-#fiskalizacija
-`}
-      </pre>
-      <div className="qr-wrapper">
-        <QRCodeSVG
-          value={order.link || "https://kset.org"}
-          size={128}
-          level="L"
-          bgColor="#FFFFFF"
-          fgColor="#000000"
-        />
+${center("#fiskalizacija")}`}
+         </pre>
+
+         {order.link ? (
+            <div style={s.qr}>
+               <QRCodeSVG value={order.link} size={110} level="Q" bgColor="#FFFFFF" fgColor="#000000" />
+            </div>
+         ) : null}
       </div>
-    </div>
-  );
+   );
 };
 
-const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj }) => {
-  const receiptRef = useRef();
 
-  const printaj = () => {
-    const w = window.open("", "_blank");
-    
-    w.document.write(`
-      <html>
-        <head>
-          <title>Racun_${order.num}</title>
-          <style>
-            @page { size: auto; margin: 0mm; }
-            body { 
-              font-family: 'Courier New', Courier, monospace; 
-              width: 300px; 
-              margin: 0; 
-              padding: 20px; 
-              background-color: white;
-            }
-            .receipt-text { 
-              white-space: pre-wrap; 
-              font-size: 13px; 
-              line-height: 1.2; 
-              margin: 0;
-            }
-            .qr-wrapper { 
-              display: flex; 
-              justify-content: center; 
-              margin-top: 15px; 
-              padding-bottom: 30px;
-            }
-          </style>
-        </head>
-        <body>
-          ${receiptRef.current.innerHTML}
-          <script>
-            window.onload = function() {
-              window.print();
-              setTimeout(function() { window.close(); }, 500);
-            };
-          </script>
-        </body>
-      </html>
-    `);
-    w.document.close();
+const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj, autoPrint }) => {
+   const receiptRef = useRef();
+   const printOrderRef = useRef(null);
 
-    if (onAfterPrint) {
-      setTimeout(onAfterPrint, 800);
-    }
-  };
+   const doPrint = () => {
+      const w = window.open("", "_blank");
+      w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #fff; }
+        @media print { @page { margin: 0; size: 80mm auto; } }
+      </style></head><body>${receiptRef.current.innerHTML}</body></html>`);
+      w.document.close();
+      setTimeout(() => {
+         w.print();
+         if (onAfterPrint) setTimeout(onAfterPrint, 500);
+      }, 300);
+   };
+
+   const printaj = (updatedOrder) => {
+      if (updatedOrder) {
+        printOrderRef.current = updatedOrder;
+        // Force re-render so receiptRef gets updated HTML, then print
+        setTimeout(doPrint, 50);
+      } else {
+        doPrint();
+      }
+   };
+
+   useEffect(() => {
+      if (autoPrint && order) {
+         printOrderRef.current = order;
+         setTimeout(doPrint, 50);
+      }
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, []);
 
   const handleClick = () => {
     if (onFiskaliziraj) {
@@ -156,13 +144,13 @@ const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj }) => {
     }
   };
 
-  return (
-    <div>
-      <div style={{ display: "none" }}>
-        <div ref={receiptRef}>
-          <Receipt order={order} />
-        </div>
-      </div>
+   return (
+      <div>
+         <div style={{ display: "none" }}>
+            <div ref={receiptRef}>
+               <Receipt order={printOrderRef.current ?? order} />
+            </div>
+         </div>
 
       <button
         onClick={handleClick}

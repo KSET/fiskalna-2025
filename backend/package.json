@@ -12,7 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@prisma/client": "^5.22.0",
+    "@prisma/client": "^6.19.2",
     "connect-pg-simple": "^10.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
@@ -21,7 +21,7 @@
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "pg": "^8.18.0",
-    "prisma": "^5.22.0"
+    "prisma": "^6.19.2"
   },
   "devDependencies": {
     "nodemon": "^3.1.11"

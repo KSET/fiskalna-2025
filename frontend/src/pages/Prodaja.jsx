@@ -52,7 +52,7 @@ export default function Prodaja() {
 
     for (const receipt of offline) {
       try {
-        const res = await fetch("http://localhost:3000/api/receipts", {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/receipts`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -81,6 +81,26 @@ export default function Prodaja() {
       alert("Svi offline računi su uspješno sinkronizirani!");
     }
   };
+
+  useEffect(() => {
+    fetchArticles();
+    syncOfflineReceipts();
+  }, []);
+
+  const totalBrutto = selectedItems.reduce((sum, item) =>
+    sum + (Number(item.price) * Number(item.quantity)), 0
+  );
+
+  const totalNetto = selectedItems.reduce((sum, item) => {
+    const price = Number(item.price);
+    const qty = Number(item.quantity);
+    const rate = Number(item.taxRate || 0);
+    const lineBrutto = price * qty;
+    const lineNetto = lineBrutto / (1 + (rate / 100));
+    return sum + lineNetto;
+  }, 0);
+
+  const totalTax = totalBrutto - totalNetto;
 
   const fetchArticles = async () => {
     try {
@@ -138,7 +158,8 @@ export default function Prodaja() {
 
     const finalReceiptNumber = `RCN-${Date.now()}`;
     const paymentTypeMap = { "Gotovina": "GOTOVINA", "Kartica": "KARTICA" };
-    
+    const paymentTypeValue = paymentTypeMap[paymentMethod] || "GOTOVINA";
+
     const receiptData = {
       receiptNumber: finalReceiptNumber,
       invoiceType: "RAČUN",
@@ -157,7 +178,7 @@ export default function Prodaja() {
     };
 
     try {
-      const response = await fetch("http://localhost:3000/api/receipts", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/receipts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -165,12 +186,13 @@ export default function Prodaja() {
       });
 
       if (response.ok) {
-        alert("Račun je uspješno kreiran!");
-        return receiptData; 
+        const receipt = await response.json();
+        return receipt;
       } else {
         const error = await response.json();
         if (error.error && error.error.toLowerCase().includes("unique constraint")) return receiptData;
         alert("Greška: " + (error.error || "Nepoznata greška"));
+        return null;
         return null;
       }
     } catch (error) {
@@ -184,14 +206,31 @@ export default function Prodaja() {
   };
 
   const handleFiskaliziraj = async (printFunction) => {
-    const savedReceipt = await handleCheckout();
-    if (savedReceipt) {
+    const receipt = await handleCheckout();
+    if (receipt) {
+      const buildPoreznaLink = (jir, dateStr, brutto) => {
+        if (!jir) return "";
+        const d = new Date(dateStr);
+        const pad = (n) => n.toString().padStart(2, "0");
+        const datv = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
+        const iznInt = Math.round(Math.abs(brutto) * 100);
+        const iznFormatted = Math.floor(iznInt / 100).toString().padStart(8, "0") + "," + (iznInt % 100).toString().padStart(2, "0");
+        return `https://porezna.gov.hr/rn?jir=${jir}&datv=${datv}&izn=${iznFormatted}`;
+      };
       printFunction({
-        ...savedReceipt,
-        num: savedReceipt.receiptNumber, 
+        num: receipt.invoiceNumber ?? "",
+        payment: paymentMethod,
+        items: selectedItems,
         time: CroatianDateTime(),
-        cashier: "doria"
-      }); 
+        cashier: "doria",
+        base: receipt.netto ?? 0,
+        tax: receipt.taxValue ?? 0,
+        jir: receipt.jir ?? "",
+        zki: receipt.zki ?? "",
+        link: buildPoreznaLink(receipt.jir, receipt.invoiceDate || receipt.createdAt, receipt.brutto ?? 0),
+        phone: "0916043415",
+        email: "info@kset.org",
+      });
     }
   };
 
@@ -255,16 +294,24 @@ export default function Prodaja() {
               <div className="cart-items">
                 {selectedItems.map(item => (
                   <div key={item.articleId} className="cart-item">
-                    <div>
+                    <div className="cart-item-info">
                       <strong>{item.name}</strong>
                       <p><span className="currency">{item.price.toFixed(2)}</span> x {item.quantity}</p>
                     </div>
-                    <div className="quantity-control">
-                      <button onClick={() => updateQuantity(item.articleId, item.quantity - 1)}>-</button>
-                      <input value={item.quantity} readOnly />
-                      <button onClick={() => updateQuantity(item.articleId, item.quantity + 1)}>+</button>
+                    <div className="cart-item-controls">
+                      <div className="quantity-control">
+                        <button onClick={() => updateQuantity(item.articleId, item.quantity - 1)}>-</button>
+                        <input
+                          value={item.quantity}
+                          onChange={(e) => updateQuantity(item.articleId, parseInt(e.target.value))}
+                        />
+                        <button onClick={() => updateQuantity(item.articleId, item.quantity + 1)}>+</button>
+                      </div>
+                      <div className="item-total">
+                        <span className="currency">{(item.price * item.quantity).toFixed(2)}</span>
+                      </div>
+                      <button onClick={() => removeItem(item.articleId)} className="btn-danger cart-remove">✕</button>
                     </div>
-                    <button onClick={() => removeItem(item.articleId)} className="btn-danger">✕</button>
                   </div>
                 ))}
               </div>
@@ -284,7 +331,7 @@ export default function Prodaja() {
 
                 <ReceiptPrintButton
                   order={{
-                    num: "Generating...",
+                    num: "",
                     payment: paymentMethod,
                     items: selectedItems,
                     time: CroatianDateTime(),

@@ -5,11 +5,6 @@ export default function Izvjestaj() {
   const [transactions, setTransactions] = useState([]);
   const [receipts, setReceipts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-
-  useEffect(() => {
-    fetchData();
-  }, []);
 
   const fetchData = async () => {
     try {
@@ -48,13 +43,10 @@ export default function Izvjestaj() {
     }
   };
 
-  // Filter za odabrani datum - SVE račune (i aktivne i stornirane)
-  const dayReceipts = receipts.filter(r => {
-    const rDate = new Date(r.createdAt).toISOString().split('T')[0];
-    return rDate === selectedDate;
-  }).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  useEffect(() => { fetchData(); }, []);
 
-  // Samo računi bez storno statusa za vremenske granice i brojanje
+  const dayReceipts = [...receipts].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
   const positiveReceipts = dayReceipts.filter(r => r.status !== 'STORNO');
   const startTime = positiveReceipts.length > 0 ? new Date(positiveReceipts[0].createdAt) : null;
   const endTime = positiveReceipts.length > 0 ? new Date(positiveReceipts[positiveReceipts.length - 1].createdAt) : null;
@@ -75,6 +67,7 @@ export default function Izvjestaj() {
       articlesByPayment[method] = {};
     }
     if (receipt.items) {
+      const sign = receipt.status === 'STORNO' ? -1 : 1;
       receipt.items.forEach(item => {
         const name = item.article?.name || "N/A";
 
@@ -86,8 +79,8 @@ export default function Izvjestaj() {
             total: 0
           };
         }
-        articlesByPayment[method][name].quantity += item.quantity;
-        articlesByPayment[method][name].total += item.quantity * item.price;
+        articlesByPayment[method][name].quantity += sign * item.quantity;
+        articlesByPayment[method][name].total += sign * item.quantity * item.price;
 
         // Group all articles together
         if (!allArticles[name]) {
@@ -97,8 +90,8 @@ export default function Izvjestaj() {
             total: 0
           };
         }
-        allArticles[name].quantity += item.quantity;
-        allArticles[name].total += item.quantity * item.price;
+        allArticles[name].quantity += sign * item.quantity;
+        allArticles[name].total += sign * item.quantity * item.price;
       });
     }
   });
@@ -120,36 +113,12 @@ export default function Izvjestaj() {
 
   return (
     <div className="page-container" id="report-container">
-      <style>{`
-        @media print {
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { margin: 0; padding: 0; background: white; }
-          #root { width: 100%; margin: 0; padding: 0; }
-          .sidebar { display: none !important; }
-          .main-layout { display: block !important; margin: 0; padding: 0; }
-          .main-content { margin: 0 !important; padding: 20px !important; width: 100% !important; background: white !important; }
-          .page-container { max-width: 100%; margin: 0; padding: 0; background: white; }
-          .no-print { display: none !important; }
-          h1, h2, h3 { page-break-after: avoid; }
-          table { width: 100%; }
-        }
-      `}</style>
 
       <div className="report-header" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
         <h1 style={{margin: 0, color: '#333'}}>Izvještaj</h1>
         <button onClick={handlePrint} className="btn-primary no-print" style={{background: '#667eea', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '5px', cursor: 'pointer'}}>
           Ispiši ✓
         </button>
-      </div>
-
-      <div className="no-print" style={{marginBottom: '20px'}}>
-        <label style={{color: '#333', fontWeight: '600', marginRight: '10px'}}>Odaberi datum:</label>
-        <input
-          type="date"
-          value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
-          style={{padding: '8px 12px', borderRadius: '4px', border: '1px solid #ddd', fontSize: '14px'}}
-        />
       </div>
 
       {/* Vremenski raspon i brojevi računa - header section */}
@@ -160,7 +129,7 @@ export default function Izvjestaj() {
               {startTime.toLocaleDateString("hr-HR", { day: '2-digit', month: '2-digit', year: 'numeric' })}, {startTime.toLocaleTimeString("hr-HR", {hour: '2-digit', minute:'2-digit'})} - {endTime.toLocaleDateString("hr-HR", { day: '2-digit', month: '2-digit', year: 'numeric' })}, {endTime.toLocaleTimeString("hr-HR", {hour: '2-digit', minute:'2-digit'})}
             </>
           ) : (
-            'Nema računa za odabrani datum'
+            'Nema računa'
           )}
         </div>
         <div>{positiveReceipts.length}</div>
