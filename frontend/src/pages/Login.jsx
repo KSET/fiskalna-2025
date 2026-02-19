@@ -2,7 +2,6 @@ import { useEffect } from "react";
 
 export default function Login() {
   useEffect(() => {
-    // Provjera errora
     const params = new URLSearchParams(window.location.search);
     if (params.has("error")) {
       alert("Nije vam dozvoljen pristup");
@@ -37,7 +36,7 @@ export default function Login() {
           Fiskalna 2026
         </h1>
         <p style={{ color: '#666', marginBottom: '30px', fontSize: '14px' }}>
-          Sistem za upravljanje prodajom
+          @kset
         </p>
         <button onClick={login} style={{
           background: '#FF8C04',

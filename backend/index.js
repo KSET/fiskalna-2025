@@ -266,6 +266,7 @@ app.get("/api/receipts/:id/print", requireAuth, async (req, res) => {
 app.post("/api/receipts", requireAuth, async (req, res) => {
   try {
     const {
+      receiptNumber,
       webshopOrderId,
       webshopType,
       webshopEvent,
@@ -319,6 +320,7 @@ app.post("/api/receipts", requireAuth, async (req, res) => {
     
     const receipt = await prisma.receipt.create({
       data: {
+        invoiceNumber: receiptNumber || `RCN-${Date.now()}`,
         webshopOrderId,
         webshopType,
         webshopEvent,
@@ -381,18 +383,33 @@ app.post("/api/receipts", requireAuth, async (req, res) => {
       items: receipt.items,
     });
 
-    if (firaResult) {
-      await prisma.receipt.update({
-        where: { id: receipt.id },
-        data: {
-          invoiceNumber: firaResult.invoiceNumber,
-          jir: firaResult.jir,
-          zki: firaResult.zki,
-        },
-      });
-      receipt.invoiceNumber = firaResult.invoiceNumber;
-      receipt.jir = firaResult.jir;
-      receipt.zki = firaResult.zki;
+    if (firaResult && firaResult.invoiceNumber) {
+      try {
+        await prisma.receipt.update({
+          where: { id: receipt.id },
+          data: {
+
+            invoiceNumber: firaResult.invoiceNumber, 
+            jir: firaResult.jir,
+            zki: firaResult.zki,
+          },
+        });
+        receipt.invoiceNumber = firaResult.invoiceNumber;
+        receipt.jir = firaResult.jir;
+        receipt.zki = firaResult.zki;
+      } catch (updateError) {
+        console.error("Failed to update receipt with fiscal data:", updateError);
+        if (updateError.code === 'P2002') {
+          await prisma.receipt.update({
+            where: { id: receipt.id },
+            data: {
+              invoiceNumber: `${firaResult.invoiceNumber}-DUP-${Date.now()}`,
+              jir: firaResult.jir,
+              zki: firaResult.zki,
+            },
+          });
+        }
+      }
     }
 
     //rounding check
@@ -558,8 +575,6 @@ app.put("/api/receipts/:id", requireAuth, async (req, res) => {
     const receipt = await prisma.receipt.update({
       where: { id },
       data: {
-        invoiceNumber,
-        webshopOrderId,
         webshopType,
         webshopEvent,
         webshopOrderNumber,
@@ -784,7 +799,6 @@ app.delete("/api/categories/:id", requireAuth, async (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log("\n========================================");
-  console.log("🚀 Backend Server Started!");
-  console.log(`📍 Running on http://localhost:${PORT}`);
+  console.log(`Running on http://localhost:${PORT}`);
   console.log("========================================\n");
 });
