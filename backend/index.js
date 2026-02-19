@@ -507,6 +507,31 @@ app.put("/api/receipts/:id/storno", requireAuth, async (req, res) => {
       },
     });
 
+    // Fiscalize storno receipt via FIRA
+    const firaResult = await handleOrderFiscalization({
+      id: stornoReceipt.id,
+      code: stornoReceipt.id,
+      email: null,
+      createdAt: stornoReceipt.createdAt,
+      currency: stornoReceipt.currency,
+      items: stornoReceipt.items,
+    });
+
+    if (firaResult && firaResult.invoiceNumber) {
+      await prisma.receipt.update({
+        where: { id: stornoReceipt.id },
+        data: {
+          invoiceNumber: firaResult.invoiceNumber,
+          jir: firaResult.jir,
+          zki: firaResult.zki,
+        },
+      });
+      stornoReceipt.invoiceNumber = firaResult.invoiceNumber;
+      stornoReceipt.jir = firaResult.jir;
+      stornoReceipt.zki = firaResult.zki;
+      stornoReceipt.invoiceDate = firaResult.invoiceDate;
+    }
+
     res.json(stornoReceipt);
   } catch (error) {
     res.status(400).json({ error: error.message });

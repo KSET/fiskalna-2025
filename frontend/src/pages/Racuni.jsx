@@ -46,14 +46,20 @@ export default function Racuni() {
   const handleStorno = async (receiptId) => {
     if (window.confirm("Sigurno želite otkazati ovaj račun?")) {
       try {
-        await fetch(`${import.meta.env.VITE_API_URL}/api/receipts/${receiptId}/storno`, {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/receipts/${receiptId}/storno`, {
           method: "PUT",
           credentials: "include",
         });
+        if (!res.ok) throw new Error("Storno failed");
+        const stornoReceipt = await res.json();
         fetchReceipts();
-        alert("Račun je otkazan!");
+        const printRes = await fetch(`${import.meta.env.VITE_API_URL}/api/receipts/${stornoReceipt.id}/print`, {
+          credentials: "include",
+        });
+        if (printRes.ok) setPrintData(await printRes.json());
       } catch (error) {
         console.error("Error cancelling receipt:", error);
+        alert("Greška pri storniranju računa");
       }
     }
   };
