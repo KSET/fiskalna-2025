@@ -1,21 +1,17 @@
 import { useRef } from "react";
 import { QRCodeSVG } from "qrcode.react";
 
-
 const Receipt = ({ order }) => {
-   if (!(order.items)) return
-
+   if (!(order.items)) return;
 
    const line = "-".repeat(42);
-
    
    const padLeft = (text, width) =>
       text.length >= width ? text.slice(0, width) : " ".repeat(width - text.length) + text;
 
-   const maxNameWidth = 14; // width for name per line
+   const maxNameWidth = 14; 
    const maxLastNameWidth = 7; 
 
-   // Helper to split text into chunks of maxNameWidth
    const wrapText = (text, width, lastWidth) => {
       const lines = [];
       let start = 0;
@@ -24,15 +20,27 @@ const Receipt = ({ order }) => {
          start += width;
       }
       lines.push(text.slice(start, Math.min(start + lastWidth, text.length)));
-      console.log(lines)
       return lines;
    };
 
+   // --- NEW LOGIC: Group Taxes by Rate ---
+   const taxGroups = order.items.reduce((groups, item) => {
+      const rate = item.taxRate || 0;
+      const brutto = item.price * item.quantity;
+      const netto = brutto / (1 + rate / 100);
+      const taxValue = brutto - netto;
+
+      if (!groups[rate]) {
+         groups[rate] = { base: 0, tax: 0 };
+      }
+      groups[rate].base += netto;
+      groups[rate].tax += taxValue;
+      return groups;
+   }, {});
+
    return (
       <>
-
       <pre className="receipt">
-
          {`
 Telefon: ${order.phone}
 E-mail: ${order.email}
@@ -48,26 +56,23 @@ ${order.items.map(item => {
          return nameLines
             .map((lineText, index) => {
                if (index === nameLines.length - 1) {
-                  // Last line: show quantity, price, total
                   return `${lineText.padEnd(maxLastNameWidth)} ${padLeft(item.quantity.toString(), 4)}  ${padLeft(item.price.toFixed(2), 8)}  ${padLeft((item.price * item.quantity).toFixed(2), 7)}`;
                } else {
-                  // Other lines: just the name
                   return lineText;
                }
             })
             .join("\n");
       }).join("\n")}
 ${line}
-UKUPNO${padLeft(order.items.reduce(
-         (acc, item) => acc + item.price * item.quantity,
-         0
-      ).toFixed(2) + " €", 25)}
+UKUPNO${padLeft(Number(order.total).toFixed(2) + " €", 25)}
 ${line}
 Način plaćanja: ${order.payment}
 ${line}
 Porez      %  Osnovica    Iznos
 ${line}
-PDV        5  ${padLeft(order.base.toFixed(2), 8)}  ${padLeft(order.tax.toFixed(2), 7)}
+${Object.entries(taxGroups).map(([rate, values]) => {
+   return `PDV ${padLeft(rate, 10)}  ${padLeft(values.base.toFixed(2), 8)}  ${padLeft(values.tax.toFixed(2), 7)}`;
+}).join("\n")}
 ${line}
 
 JIR: ${order.jir}
@@ -86,10 +91,8 @@ ZKI: ${order.zki}
     />
    </div>
 </>
-  
    );
 };
-
 
 const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj }) => {
    const receiptRef = useRef();

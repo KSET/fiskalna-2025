@@ -349,7 +349,12 @@ app.post("/api/receipts", requireAuth, async (req, res) => {
         },
       });
     }
+    const calculatedBrutto = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
+    //rounding check
+    if (Math.abs(calculatedBrutto - brutto) > 0.01) {
+        return res.status(400).json({ error: "Total amount mismatch." });
+    }
     res.status(201).json(receipt);
   } catch (error) {
     res.status(400).json({ error: error.message });

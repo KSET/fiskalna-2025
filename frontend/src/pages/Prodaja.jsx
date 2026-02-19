@@ -6,13 +6,9 @@ import ReceiptPrintButton from "./admin/Racun";
 const CroatianDateTime = () => {
   const date = new Date();
   const pad = (num) => num.toString().padStart(2, "0");
-
-  const formattedDate =
-    `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}. ${pad(date.getHours())}:${pad(date.getMinutes())}`;
-
-  return formattedDate
+  const formattedDate = `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}. ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return formattedDate;
 };
-
 
 export default function Prodaja() {
   const [articles, setArticles] = useState([]);
@@ -21,11 +17,78 @@ export default function Prodaja() {
   const [loading, setLoading] = useState(true);
   const [searchParams] = useSearchParams();
 
+  // --- NEW STATE FOR OFFLINE TRACKING ---
+  const [offlineCount, setOfflineCount] = useState(0);
+
+  // Function to sync receipts saved in localStorage
+  const syncOfflineReceipts = async () => {
+    const offline = JSON.parse(localStorage.getItem("offline_receipts") || "[]");
+    setOfflineCount(offline.length);
+    
+    if (offline.length === 0) return;
+
+    console.log(`Pokušavam sinkronizirati ${offline.length} offline računa...`);
+    let remainingOffline = [...offline];
+
+    for (const receipt of offline) {
+      try {
+        const res = await fetch("http://localhost:3000/api/receipts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(receipt),
+        });
+
+if (res.ok) {
+  // Normal success
+  remainingOffline = remainingOffline.filter(r => r.receiptNumber !== receipt.receiptNumber);
+  localStorage.setItem("offline_receipts", JSON.stringify(remainingOffline));
+  setOfflineCount(remainingOffline.length);
+} else {
+  const errorData = await res.json();
+  
+  if (errorData.error && errorData.error.includes("Unique constraint failed")) {
+    console.warn("Račun već postoji u bazi, uklanjam iz lokala...", receipt.receiptNumber);
+    
+    remainingOffline = remainingOffline.filter(r => r.receiptNumber !== receipt.receiptNumber);
+    localStorage.setItem("offline_receipts", JSON.stringify(remainingOffline));
+    setOfflineCount(remainingOffline.length);
+  } else {
+    console.error("Server rejected the offline receipt for other reasons:", errorData);
+    break; 
+  }
+}
+      } catch (e) {
+        console.error("Network still down.");
+        break; 
+      }
+    }
+    
+    if (remainingOffline.length === 0 && offline.length > 0) {
+      alert("Svi offline računi su uspješno sinkronizirani!");
+    }
+  };
 
   useEffect(() => {
     fetchArticles();
-
+    syncOfflineReceipts();
   }, []);
+
+  // Calculations for the current cart
+  const totalBrutto = selectedItems.reduce((sum, item) => 
+    sum + (Number(item.price) * Number(item.quantity)), 0
+  );
+
+  const totalNetto = selectedItems.reduce((sum, item) => {
+    const price = Number(item.price);
+    const qty = Number(item.quantity);
+    const rate = Number(item.taxRate || 0);
+    const lineBrutto = price * qty;
+    const lineNetto = lineBrutto / (1 + (rate / 100));
+    return sum + lineNetto;
+  }, 0);
+
+  const totalTax = totalBrutto - totalNetto;
 
   const fetchArticles = async () => {
     try {
@@ -34,14 +97,12 @@ export default function Prodaja() {
       });
       const data = await response.json();
       if (!response.ok || !Array.isArray(data)) {
-        console.error("API error or invalid data:", data);
         setArticles([]);
       } else {
         setArticles(data.filter(a => a.active));
       }
       setLoading(false);
     } catch (error) {
-      console.error("Error fetching articles:", error);
       setArticles([]);
       setLoading(false);
     }
@@ -50,26 +111,19 @@ export default function Prodaja() {
   const addItem = (article) => {
     const existing = selectedItems.find(item => item.articleId === article.id);
     if (existing) {
-      setSelectedItems(
-        selectedItems.map(item =>
-          item.articleId === article.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        )
-      );
+      setSelectedItems(selectedItems.map(item =>
+        item.articleId === article.id ? { ...item, quantity: item.quantity + 1 } : item
+      ));
     } else {
-      setSelectedItems([
-        ...selectedItems,
-        {
-          articleId: article.id,
-          name: article.name,
-          price: article.price,
-          quantity: 1,
-          taxRate: article.taxRate,
-          description: article.description,
-          unit: article.unit,
-        },
-      ]);
+      setSelectedItems([...selectedItems, {
+        articleId: article.id,
+        name: article.name,
+        price: article.price,
+        quantity: 1,
+        taxRate: article.taxRate,
+        description: article.description,
+        unit: article.unit,
+      }]);
     }
   };
 
@@ -77,66 +131,50 @@ export default function Prodaja() {
     setSelectedItems(selectedItems.filter(item => item.articleId !== articleId));
   };
 
-  const clearCart = () => {
-    console.log(selectedItems)
-    setSelectedItems([])
-  }
-
+  const clearCart = () => setSelectedItems([]);
 
   const updateQuantity = (articleId, quantity) => {
     if (quantity <= 0) {
       removeItem(articleId);
     } else {
-      setSelectedItems(
-        selectedItems.map(item =>
-          item.articleId === articleId ? { ...item, quantity } : item
-        )
-      );
+      setSelectedItems(selectedItems.map(item =>
+        item.articleId === articleId ? { ...item, quantity } : item
+      ));
     }
   };
-
-  const total = selectedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   const handleCheckout = async () => {
     if (selectedItems.length === 0) return;
 
+    const receiptNumber = `RCN-${Date.now()}`;
+    const paymentTypeMap = { "Gotovina": "GOTOVINA", "Kartica": "KARTICA" };
+    const paymentTypeValue = paymentTypeMap[paymentMethod] || "GOTOVINA";
+
+    const receiptData = {
+      receiptNumber,
+      invoiceType: "RAČUN",
+      paymentType: paymentTypeValue,
+      brutto: parseFloat(totalBrutto.toFixed(2)),
+      netto: parseFloat(totalNetto.toFixed(2)),
+      taxValue: parseFloat(totalTax.toFixed(2)),
+      currency: "EUR",
+      items: selectedItems.map(item => ({
+        articleId: item.articleId,
+        name: item.name,
+        description: item.description,
+        quantity: item.quantity,
+        price: item.price,
+        taxRate: item.taxRate || 0,
+        unit: item.unit,
+      })),
+    };
+
     try {
-      const receiptNumber = `RCN-${Date.now()}`;
-
-      // Calculate totals
-      const brutto = selectedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-      const netto = 0; // Calculate based on tax rates
-      const taxValue = 0; // Calculate based on tax rates
-
-      // Validate payment type is uppercase
-      const paymentTypeMap = {
-        "Gotovina": "GOTOVINA",
-        "Kartica": "KARTICA"
-        };
-      const paymentTypeValue = paymentTypeMap[paymentMethod] || "GOTOVINA";
-
       const response = await fetch("http://localhost:3000/api/receipts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          receiptNumber,
-          invoiceType: "RAĆUN",
-          paymentType: paymentTypeValue,
-          brutto,
-          netto,
-          taxValue,
-          currency: "EUR",
-          items: selectedItems.map(item => ({
-            articleId: item.articleId,
-            name: item.name,
-            description: item.description,
-            quantity: item.quantity,
-            price: item.price,
-            taxRate: item.taxRate || 0,
-            unit: item.unit,
-          })),
-        }),
+        body: JSON.stringify(receiptData),
       });
 
       if (response.ok) {
@@ -148,9 +186,14 @@ export default function Prodaja() {
         return false;
       }
     } catch (error) {
-      console.error("Error creating receipt:", error);
-      alert("Greška pri kreiranju računa: " + error.message);
-      return false;
+      console.warn("Mreža nije dostupna. Spremanje lokalno...");
+      const offlineItems = JSON.parse(localStorage.getItem("offline_receipts") || "[]");
+      offlineItems.push({ ...receiptData, needsSync: true, timeSaved: new Date() });
+      localStorage.setItem("offline_receipts", JSON.stringify(offlineItems));
+      
+      setOfflineCount(offlineItems.length);
+      alert("Račun spremljen lokalno (Offline mod). Sinkronizirajte unutar 48h!");
+      return true;
     }
   };
 
@@ -164,24 +207,25 @@ export default function Prodaja() {
   if (loading) return <div className="page-container" style={{ color: '#333', padding: '40px 20px' }}>Učitavanje...</div>;
 
   const categoryId = searchParams.get("category");
-  const filteredArticles = categoryId
-    ? articles.filter(a => a.categoryId == categoryId)
-    : articles;
+  const filteredArticles = categoryId ? articles.filter(a => a.categoryId == categoryId) : articles;
 
   return (
     <div className="page-container">
-      <h1>Prodaja</h1>
+      <h1>
+        Prodaja 
+        {offlineCount > 0 && (
+          <span style={{color: 'red', fontSize: '14px', marginLeft: '10px'}}> 
+            ({offlineCount} čekaju sinkronizaciju)
+          </span>
+        )}
+      </h1>
+      
       <div className="prodaja-layout">
         <div className="articles-grid">
           <h2>{categoryId ? "Artikli u kategoriji" : "Svi artikli"}</h2>
           <div className="grid">
             {filteredArticles.map(article => (
-              <div
-                key={article.id}
-                className="article-card"
-                onClick={() => addItem(article)}
-                style={{ cursor: 'pointer' }}
-              >
+              <div key={article.id} className="article-card" onClick={() => addItem(article)} style={{ cursor: 'pointer' }}>
                 <h3>{article.name}</h3>
                 <p className="code">Kod: {article.productCode}</p>
                 <p className="price"><span className="currency">{article.price.toFixed(2)}</span></p>
@@ -205,25 +249,14 @@ export default function Prodaja() {
                       <p><span className="currency">{item.price.toFixed(2)}</span> x</p>
                     </div>
                     <div className="quantity-control">
-                      <button onClick={() => updateQuantity(item.articleId, item.quantity - 1)} style={{ color: "black" }}>
-                        -
-                      </button>
-                      <input
-                        value={item.quantity}
-                        onChange={(e) =>
-                          updateQuantity(item.articleId, parseInt(e.target.value))
-                        }
-                      />
-                      <button onClick={() => updateQuantity(item.articleId, item.quantity + 1)} style={{ color: "black" }}>
-                        +
-                      </button>
+                      <button onClick={() => updateQuantity(item.articleId, item.quantity - 1)}>-</button>
+                      <input value={item.quantity} readOnly />
+                      <button onClick={() => updateQuantity(item.articleId, item.quantity + 1)}>+</button>
                     </div>
                     <div className="item-total">
                       <span className="currency">{(item.price * item.quantity).toFixed(2)}</span>
                     </div>
-                    <button onClick={() => removeItem(item.articleId)} className="btn-danger">
-                      ✕
-                    </button>
+                    <button onClick={() => removeItem(item.articleId)} className="btn-danger">✕</button>
                   </div>
                 ))}
               </div>
@@ -231,17 +264,14 @@ export default function Prodaja() {
               <div className="checkout-section">
                 <div className="payment-method">
                   <label>Način plaćanja:</label>
-                  <select
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                  >
+                  <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
                     <option>Gotovina</option>
                     <option>Kartica</option>
                   </select>
                 </div>
 
                 <div className="total">
-                  <strong>Ukupno: <span className="currency">{total.toFixed(2)}</span></strong>
+                  <strong>Ukupno: <span className="currency">{totalBrutto.toFixed(2)}</span></strong>
                 </div>
 
                 <ReceiptPrintButton
@@ -251,8 +281,9 @@ export default function Prodaja() {
                     items: selectedItems,
                     time: CroatianDateTime(),
                     cashier: "doria",
-                    base: 0, // todo
-                    tax: 0,
+                    base: totalNetto, 
+                    tax: totalTax,    
+                    total: totalBrutto,
                     jir: 4332,
                     zki: 3924,
                     link: "https://jobfair.fer.unizg.hr/",
@@ -262,19 +293,12 @@ export default function Prodaja() {
                   onFiskaliziraj={handleFiskaliziraj}
                   onAfterPrint={() => setSelectedItems([])}
                 />
-
-                <button onClick={clearCart} className="btn-danger">
-                  Isprazni košaricu
-                </button>
-
-
+                <button onClick={clearCart} className="btn-danger">Isprazni košaricu</button>
               </div>
             </>
           )}
         </div>
       </div>
-
     </div>
-
   );
 }
