@@ -3,16 +3,34 @@ import express from "express";
 import cors from "cors";
 import session from "express-session";
 import passport from "passport";
+import pg from "pg";
+import { createRequire } from "module";
 import prisma from "./auth.js"; // <- your cleaned auth.js
 import requireAuth from "./middleware/requireAuth.js";
+import { handleOrderFiscalization } from "./fira.js";
+
+const require = createRequire(import.meta.url);
+const connectPgSimple = require("connect-pg-simple");
+const PgSession = connectPgSimple(session);
+const pgPool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 
 const app = express();
 
-app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || origin.startsWith("http://localhost") || origin.startsWith("http://172.") || origin.startsWith("http://192.168.") || origin.startsWith("http://10.")) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+}));
 app.use(express.json());
 
 app.use(
   session({
+    store: new PgSession({ pool: pgPool, createTableIfMissing: true }),
     secret: process.env.SESSION_SECRET || "dev_secret",
     resave: false,
     saveUninitialized: false,
@@ -56,23 +74,28 @@ app.get("/api/health", async (req, res) => {
 });
 
 // Routes
-app.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+app.get("/auth/google", (req, res, next) => {
+  // Save the frontend origin so we can redirect back to it after OAuth
+  const referer = req.headers.referer || req.headers.origin || "";
+  const match = referer.match(/^(https?:\/\/[^/]+)/);
+  req.session.frontendOrigin = match ? match[1] : "http://localhost:5173";
+  passport.authenticate("google", { scope: ["profile", "email"] })(req, res, next);
+});
 
 app.get("/oauth/callback", (req, res, next) => {
-  passport.authenticate("google", (err, user, info) => {
+  const frontend = req.session.frontendOrigin || "http://localhost:5173";
+  passport.authenticate("google", (err, user) => {
     if (err) {
-      return res.redirect("http://localhost:5173/?error=server_error");
+      return res.redirect(`${frontend}/?error=server_error`);
     }
     if (!user) {
-      // Authentication failed (non-@kset.org email)
-      return res.redirect("http://localhost:5173/?error=unauthorized");
+      return res.redirect(`${frontend}/?error=unauthorized`);
     }
-    // Log user in
     req.logIn(user, (err) => {
       if (err) {
-        return res.redirect("http://localhost:5173/?error=login_error");
+        return res.redirect(`${frontend}/?error=login_error`);
       }
-      res.redirect("http://localhost:5173/home");
+      res.redirect(`${frontend}/home`);
     });
   })(req, res, next);
 });
@@ -216,7 +239,7 @@ app.get("/api/receipts/:id/print", requireAuth, async (req, res) => {
 
     // Format receipt data for printing
     const printData = {
-      num: receipt.receiptNumber,
+      num: receipt.invoiceNumber,
       payment: receipt.paymentType,
       items: receipt.items.map(item => ({
         name: item.name || item.article?.name || "N/A",
@@ -242,13 +265,12 @@ app.get("/api/receipts/:id/print", requireAuth, async (req, res) => {
 
 app.post("/api/receipts", requireAuth, async (req, res) => {
   try {
-    const { 
-      receiptNumber, 
+    const {
       webshopOrderId,
       webshopType,
       webshopEvent,
       webshopOrderNumber,
-      invoiceType = "RAĆUN", 
+      invoiceType = "RAČUN", 
       paymentType = "GOTOVINA",
       paymentGatewayCode,
       paymentGatewayName,
@@ -297,7 +319,6 @@ app.post("/api/receipts", requireAuth, async (req, res) => {
     
     const receipt = await prisma.receipt.create({
       data: {
-        receiptNumber,
         webshopOrderId,
         webshopType,
         webshopEvent,
@@ -350,6 +371,29 @@ app.post("/api/receipts", requireAuth, async (req, res) => {
       });
     }
 
+    const firaResult = await handleOrderFiscalization({
+      id: receipt.id,
+      code: receipt.id,
+      email: receipt.billingAddress?.email,
+      createdAt: receipt.createdAt,
+      currency: receipt.currency,
+      items: receipt.items,
+    });
+
+    if (firaResult) {
+      await prisma.receipt.update({
+        where: { id: receipt.id },
+        data: {
+          invoiceNumber: firaResult.invoiceNumber,
+          jir: firaResult.jir,
+          zki: firaResult.zki,
+        },
+      });
+      receipt.invoiceNumber = firaResult.invoiceNumber;
+      receipt.jir = firaResult.jir;
+      receipt.zki = firaResult.zki;
+    }
+
     res.status(201).json(receipt);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -379,7 +423,7 @@ app.put("/api/receipts/:id/storno", requireAuth, async (req, res) => {
     // Create cancellation receipt with negative values and unique receipt number
     const stornoReceipt = await prisma.receipt.create({
       data: {
-        receiptNumber: `RCN-${Date.now()}`,
+        invoiceNumber: `RCN-${Date.now()}`,
         status: 'STORNO',
         webshopOrderId: originalReceipt.webshopOrderId,
         webshopType: originalReceipt.webshopType,
@@ -403,7 +447,7 @@ app.put("/api/receipts/:id/storno", requireAuth, async (req, res) => {
         termsHR: originalReceipt.termsHR,
         termsEN: originalReceipt.termsEN,
         termsDE: originalReceipt.termsDE,
-        internalNote: `STORNO of ${originalReceipt.receiptNumber}`,
+        internalNote: `STORNO of ${originalReceipt.invoiceNumber}`,
         discountValue: originalReceipt.discountValue,
         shippingCost: originalReceipt.shippingCost,
         items: {
@@ -441,7 +485,7 @@ app.put("/api/receipts/:id", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const { 
-      receiptNumber, 
+      invoiceNumber, 
       webshopOrderId,
       webshopType,
       webshopEvent,
@@ -509,7 +553,7 @@ app.put("/api/receipts/:id", requireAuth, async (req, res) => {
     const receipt = await prisma.receipt.update({
       where: { id },
       data: {
-        receiptNumber,
+        invoiceNumber,
         webshopOrderId,
         webshopType,
         webshopEvent,

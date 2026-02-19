@@ -42,7 +42,7 @@ CREATE TABLE "Receipt" (
     "webshopType" TEXT DEFAULT 'CUSTOM',
     "webshopEvent" TEXT,
     "webshopOrderNumber" TEXT,
-    "invoiceType" TEXT NOT NULL DEFAULT 'RAĆUN',
+    "invoiceType" TEXT NOT NULL DEFAULT 'RAČUN',
     "paymentType" "PaymentType" NOT NULL DEFAULT 'GOTOVINA',
     "paymentGatewayCode" TEXT,
     "paymentGatewayName" TEXT,

@@ -14,10 +14,10 @@ export default function Izvjestaj() {
   const fetchData = async () => {
     try {
       const [transRes, recRes] = await Promise.all([
-        fetch("http://localhost:3000/api/transactions", {
+        fetch(`${import.meta.env.VITE_API_URL}/api/transactions`, {
           credentials: "include",
         }),
-        fetch("http://localhost:3000/api/receipts", {
+        fetch(`${import.meta.env.VITE_API_URL}/api/receipts`, {
           credentials: "include",
         }),
       ]);
@@ -59,9 +59,9 @@ export default function Izvjestaj() {
   const startTime = positiveReceipts.length > 0 ? new Date(positiveReceipts[0].createdAt) : null;
   const endTime = positiveReceipts.length > 0 ? new Date(positiveReceipts[positiveReceipts.length - 1].createdAt) : null;
 
-  const receiptNumbers = positiveReceipts.map(r => r.receiptNumber);
-  const minReceiptNum = receiptNumbers.length > 0 ? receiptNumbers[0] : "N/A";
-  const maxReceiptNum = receiptNumbers.length > 0 ? receiptNumbers[receiptNumbers.length - 1] : "N/A";
+  const invoiceNumbers = positiveReceipts.map(r => r.invoiceNumber);
+  const minReceiptNum = invoiceNumbers.length > 0 ? invoiceNumbers[0] : "N/A";
+  const maxReceiptNum = invoiceNumbers.length > 0 ? invoiceNumbers[invoiceNumbers.length - 1] : "N/A";
 
   // Grupiraj artikle po načinu plaćanja - SVE račune uključene u kalkulaciju
   // Storno računi (negativni iznosi) se automatski oduzimaju jer imaju negativne cijene
@@ -177,7 +177,7 @@ export default function Izvjestaj() {
           <tr style={{borderBottom: '1px solid #ddd'}}>
             <td style={{padding: '8px 15px', color: '#666'}}>Brojevi računa</td>
             <td style={{padding: '8px 15px', textAlign: 'right', color: '#333'}}></td>
-            <td style={{padding: '8px 15px', textAlign: 'right', color: '#333'}}>{positiveReceipts.length > 0 ? `${minReceiptNum.split('-')[1]} do ${maxReceiptNum.split('-')[1]}` : 'N/A'}</td>
+            <td style={{padding: '8px 15px', textAlign: 'right', color: '#333'}}>{positiveReceipts.length > 0 ? `${minReceiptNum ?? 'N/A'} do ${maxReceiptNum ?? 'N/A'}` : 'N/A'}</td>
           </tr>
         </tbody>
       </table>

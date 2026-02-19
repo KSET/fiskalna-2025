@@ -16,7 +16,7 @@ export default function Racuni() {
 
   const fetchReceipts = async () => {
     try {
-      const response = await fetch("http://localhost:3000/api/receipts", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/receipts`, {
         credentials: "include",
       });
       const data = await response.json();
@@ -37,7 +37,7 @@ export default function Racuni() {
   const filteredReceipts = receipts.filter(receipt => {
     const searchLower = searchTerm.toLowerCase();
     return (
-      receipt.receiptNumber.toLowerCase().includes(searchLower) ||
+      receipt.invoiceNumber?.toLowerCase().includes(searchLower) ||
       receipt.paymentType.toLowerCase().includes(searchLower) ||
       receipt.user?.name?.toLowerCase().includes(searchLower) ||
       receipt.brutto.toString().includes(searchLower)
@@ -47,7 +47,7 @@ export default function Racuni() {
   const handleStorno = async (receiptId) => {
     if (window.confirm("Sigurno želite otkazati ovaj račun?")) {
       try {
-        await fetch(`http://localhost:3000/api/receipts/${receiptId}/storno`, {
+        await fetch(`${import.meta.env.VITE_API_URL}/api/receipts/${receiptId}/storno`, {
           method: "PUT",
           credentials: "include",
         });
@@ -62,7 +62,7 @@ export default function Racuni() {
   const handlePrint = async (receiptId) => {
     try {
       setPrintingReceiptId(receiptId);
-      const response = await fetch(`http://localhost:3000/api/receipts/${receiptId}/print`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/receipts/${receiptId}/print`, {
         credentials: "include",
       });
       
@@ -236,7 +236,7 @@ ZKI: ${order.zki}
                              : '';
               return (
                 <tr key={receipt.id} className={rowClass}>
-                  <td>{receipt.receiptNumber}</td>
+                  <td>{receipt.invoiceNumber}</td>
                   <td>
                     {new Date(receipt.createdAt).toLocaleDateString("hr-HR")} {new Date(receipt.createdAt).toLocaleTimeString("hr-HR", {hour: '2-digit', minute: '2-digit'})}
                   </td>

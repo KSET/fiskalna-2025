@@ -29,7 +29,7 @@ export default function Prodaja() {
 
   const fetchArticles = async () => {
     try {
-      const response = await fetch("http://localhost:3000/api/articles", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/articles`, {
         credentials: "include",
       });
       const data = await response.json();
@@ -101,8 +101,6 @@ export default function Prodaja() {
     if (selectedItems.length === 0) return;
 
     try {
-      const receiptNumber = `RCN-${Date.now()}`;
-
       // Calculate totals
       const brutto = selectedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
       const netto = 0; // Calculate based on tax rates
@@ -112,17 +110,15 @@ export default function Prodaja() {
       const paymentTypeMap = {
         "Gotovina": "GOTOVINA",
         "Kartica": "KARTICA",
-        "Kartica": "KARTICA"
       };
       const paymentTypeValue = paymentTypeMap[paymentMethod] || "GOTOVINA";
 
-      const response = await fetch("http://localhost:3000/api/receipts", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/receipts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          receiptNumber,
-          invoiceType: "RAĆUN",
+          invoiceType: "RAČUN",
           paymentType: paymentTypeValue,
           brutto,
           netto,

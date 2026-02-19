@@ -18,7 +18,7 @@ export default function UkupniIzvjestaj() {
 
   const fetchReports = async () => {
     try {
-      const response = await fetch("http://localhost:3000/api/reports", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/reports`, {
         credentials: "include",
       });
       const data = await response.json();
@@ -33,7 +33,7 @@ export default function UkupniIzvjestaj() {
   const handleCreateReport = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch("http://localhost:3000/api/reports", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/reports`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

@@ -8,12 +8,12 @@ export default function Sidebar() {
   const [categories, setCategories] = useState([]);
 
   useEffect(() => {
-    fetch("http://localhost:3000/auth/me", { credentials: "include" })
+    fetch(`${import.meta.env.VITE_API_URL}/auth/me`, { credentials: "include" })
       .then(res => res.json())
       .then(data => setUser(data))
       .catch(() => setUser(null));
 
-    fetch("http://localhost:3000/api/categories", { credentials: "include" })
+    fetch(`${import.meta.env.VITE_API_URL}/api/categories`, { credentials: "include" })
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setCategories(data.filter(c => c.active));
@@ -24,7 +24,7 @@ export default function Sidebar() {
   const isActive = (path) => location.pathname === path;
 
   const handleLogout = async () => {
-    await fetch("http://localhost:3000/auth/logout", {
+    await fetch(`${import.meta.env.VITE_API_URL}/auth/logout`, {
       method: "POST",
       credentials: "include",
     });

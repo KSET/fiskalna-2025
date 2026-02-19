@@ -19,7 +19,7 @@ export default function Kategorije() {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch("http://localhost:3000/api/categories", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/categories`, {
         credentials: "include",
       });
       const data = await response.json();
@@ -44,8 +44,8 @@ export default function Kategorije() {
     e.preventDefault();
     try {
       const url = editingId
-        ? `http://localhost:3000/api/categories/${editingId}`
-        : "http://localhost:3000/api/categories";
+        ? `${import.meta.env.VITE_API_URL}/api/categories/${editingId}`
+        : `${import.meta.env.VITE_API_URL}/api/categories`;
       const method = editingId ? "PUT" : "POST";
 
       const response = await fetch(url, {
@@ -78,7 +78,7 @@ export default function Kategorije() {
   const handleDelete = async (id) => {
     if (window.confirm("Sigurno želite obrisati ovu kategoriju?")) {
       try {
-        const response = await fetch(`http://localhost:3000/api/categories/${id}`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/categories/${id}`, {
           method: "DELETE",
           credentials: "include",
         });
@@ -96,7 +96,7 @@ export default function Kategorije() {
   const toggleActive = async (id, currentActive) => {
     try {
       const category = categories.find(c => c.id === id);
-      await fetch(`http://localhost:3000/api/categories/${id}`, {
+      await fetch(`${import.meta.env.VITE_API_URL}/api/categories/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

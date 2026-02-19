@@ -1,0 +1,138 @@
+/**
+ * FIRA Plugin
+ * Automatically creates fiscalized invoices in FIRA when orders are paid.
+ */
+
+/**
+ * Triggered when a receipt/order is marked as paid.
+ * Creates a fiscalized invoice in FIRA with order details.
+ *
+ * @param {object} order - Receipt object with items array
+ * @param {string} order.id - Receipt ID
+ * @param {string} order.code - Receipt number/code
+ * @param {string} order.email - Customer email
+ * @param {string} order.createdAt - Receipt creation datetime (ISO string)
+ * @param {string} order.currency - Currency code (e.g. "EUR")
+ * @param {Array}  order.items - Array of receipt items
+ */
+export async function handleOrderFiscalization(order) {
+  // Skip free orders - no invoice needed
+  // if (order.total === 0) {
+  //   console.log(`Order ${order.code} has total of 0. Skipping FIRA invoice creation.`);
+  //   return;
+  // }
+
+  // Group order positions by FIRA product ID
+  const itemsGrouped = {};
+
+  for (const position of order.items) {
+    const firaId = position.article?.productCode;
+    if (firaId && firaId !== '-1') {
+      if (!itemsGrouped[firaId]) {
+        itemsGrouped[firaId] = { quantity: 0, price: 0, name: "" };
+      }
+      itemsGrouped[firaId].quantity += 1;
+      if (itemsGrouped[firaId].price === 0) {
+        itemsGrouped[firaId].price = parseFloat(position.price);
+        itemsGrouped[firaId].name = position.name || position.article?.name || "";
+      }
+    }
+  }
+
+  // Build line items for FIRA API
+  const lineItems = Object.entries(itemsGrouped).map(([firaId, itemData]) => ({
+    productCode: firaId,
+    lineItemId: firaId,
+    quantity: itemData.quantity,
+    price: itemData.price,
+    name: itemData.name,
+    taxRate: 0.05,
+  }));
+
+  if (lineItems.length === 0) {
+    console.log(`No valid items with FIRAID for order ${order.code}. Skipping FIRA invoice creation.`);
+    return;
+  }
+
+
+  // Format datetime for FIRA API (LocalDateTime format without timezone)
+  const createdAt = new Date(order.createdAt).toISOString().slice(0, 19);
+
+  // Billing address for FIRA API
+  // Include email if available - FIRA will send email invoice if configured
+  const billingAddress = {
+    country: "HR",
+  };
+
+  if (order.email) {
+    billingAddress.email = order.email;
+  }
+
+  // Calculate invoice totals (prices are tax-included)
+  // Formula: netto = brutto / (1 + taxRate), tax = brutto - netto
+  let totalBrutto = 0.0;
+  let totalNetto = 0.0;
+  let totalTax = 0.0;
+
+  for (const item of lineItems) {
+    const itemBrutto = item.price * item.quantity;
+    const itemNetto = itemBrutto / (1 + item.taxRate);
+    const itemTax = itemBrutto - itemNetto;
+    totalBrutto += itemBrutto;
+    totalNetto += itemNetto;
+    totalTax += itemTax;
+  }
+  // Round to 2 decimal places
+  totalBrutto = Math.round(totalBrutto * 100) / 100;
+  totalNetto = Math.round(totalNetto * 100) / 100;
+  totalTax = Math.round(totalTax * 100) / 100;
+
+  // Prepare invoice data for FIRA
+  const data = {
+    webshopOrderId: parseInt(order.code.replace(/\D/g, '').slice(-15)),
+    webshopType: "CUSTOM",
+    webshopOrderNumber: order.code,
+    invoiceType: process.env.FIRA_INVOICE_TYPE || 'PONUDA',
+    createdAt,
+    currency: order.currency,
+    paymentType: "KARTICA",
+    taxesIncluded: true,
+    brutto: totalBrutto,
+    netto: totalNetto,
+    taxValue: totalTax,
+    billingAddress,
+    lineItems,
+  };
+
+  console.log(`Sending to FIRA: ${JSON.stringify(data, null, 2)}`);
+
+  // MOCK response
+  const mockResponse = {
+    invoiceNumber: '355-6-7',
+    jir: '0374439f-7c06-4018-91db-ec4580d9b97e',
+    zki: 'edfee1dfbe4faf5e921b3b0dc6aa69e9',
+  };
+  console.log(`FIRA mock response: ${JSON.stringify(mockResponse)}`);
+  return mockResponse;
+
+  // REAL request (uncomment when ready)
+  // const url = process.env.FIRA_API_URL || 'https://app.fira.finance/api/v1/webshop/order/custom';
+  // const headers = { 'FIRA-Api-Key': process.env.FIRA_API_KEY, 'Content-Type': 'application/json' };
+  // try {
+  //   const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(data) });
+  //   console.log(`FIRA response status: ${response.status}`);
+  //   const responseText = await response.text();
+  //   console.log(`FIRA response body: ${responseText}`);
+  //   if (response.status === 200) {
+  //     const responseData = JSON.parse(responseText);
+  //     console.log(`FIRA fiscalized success, račun: ${responseData.invoiceNumber}, JIR: ${responseData.jir}`);
+  //     return { invoiceNumber: responseData.invoiceNumber, jir: responseData.jir, zki: responseData.zki };
+  //   } else {
+  //     console.log(`FIRA invoice creation FAILED. Status ${response.status}: ${responseText}`);
+  //     return null;
+  //   }
+  // } catch (e) {
+  //   console.log(`FIRA invoice creation FAILED with exception: ${e.message}`);
+  //   return null;
+  // }
+}
