@@ -1,0 +1,47 @@
+name: do-lint
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: "The working directory for the action. Should be where the package-lock.json file is."
+        required: true
+        default: "."
+        type: string
+
+env:
+  NODE_OPTIONS: --max-old-space-size=8192
+
+jobs:
+  lint:
+    name: Run linter for Node ${{ matrix.node }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    defaults:
+      run:
+        working-directory: .
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        node: [24]
+
+    steps:
+      - name: Checkout 🛎
+        uses: actions/checkout@v3
+
+      - name: Setup node env 🏗
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node }}
+          check-latest: true
+          cache: "npm"
+          cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+
+      - name: Install dependencies ‍💻
+        run: npm install
+        working-directory: ${{ inputs.working-directory }}
+
+      - name: Run linter 👀
+        run: npm run lint
+        working-directory: ${{ inputs.working-directory }}
