@@ -1,4 +1,3 @@
 -- AlterTable
-ALTER TABLE "Receipt" ADD COLUMN     "jir" TEXT,
-ADD COLUMN     "zki" TEXT,
-ALTER COLUMN "receiptNumber" DROP NOT NULL;
+ALTER TABLE "Receipt" ADD COLUMN IF NOT EXISTS "jir" TEXT,
+ADD COLUMN IF NOT EXISTS "zki" TEXT;
