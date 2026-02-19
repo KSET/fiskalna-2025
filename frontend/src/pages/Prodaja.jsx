@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import "../styles/Pages.css";
 import ReceiptPrintButton from "./admin/Racun";
@@ -6,8 +6,7 @@ import ReceiptPrintButton from "./admin/Racun";
 const CroatianDateTime = () => {
   const date = new Date();
   const pad = (num) => num.toString().padStart(2, "0");
-  const formattedDate = `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}. ${pad(date.getHours())}:${pad(date.getMinutes())}`;
-  return formattedDate;
+  return `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}. ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
 
 export default function Prodaja() {
@@ -19,30 +18,33 @@ export default function Prodaja() {
   const [offlineCount, setOfflineCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // --- 1. CALCULATIONS (Restored to fix your error) ---
-  const totalBrutto = selectedItems.reduce((sum, item) => 
-    sum + (Number(item.price) * Number(item.quantity)), 0
-  );
+  const { totalBrutto, totalNetto, totalTax } = useMemo(() => {
+    const brutto = selectedItems.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0);
+    const netto = selectedItems.reduce((sum, item) => {
+      const lineBrutto = Number(item.price) * Number(item.quantity);
+      return sum + (lineBrutto / (1 + (Number(item.taxRate || 0) / 100)));
+    }, 0);
+    return { totalBrutto: brutto, totalNetto: netto, totalTax: brutto - netto };
+  }, [selectedItems]);
 
-  const totalNetto = selectedItems.reduce((sum, item) => {
-    const price = Number(item.price);
-    const qty = Number(item.quantity);
-    const rate = Number(item.taxRate || 0);
-    const lineBrutto = price * qty;
-    const lineNetto = lineBrutto / (1 + (rate / 100));
-    return sum + lineNetto;
-  }, 0);
-
-  const totalTax = totalBrutto - totalNetto;
-
-  // --- 2. INITIAL LOAD ---
   useEffect(() => {
     const offline = JSON.parse(localStorage.getItem("offline_receipts") || "[]");
     setOfflineCount(offline.length);
     fetchArticles();
   }, []);
 
-  // --- 3. MANUAL SYNC LOGIC ---
+  const fetchArticles = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/articles`, { credentials: "include" });
+      const data = await response.json();
+      setArticles(response.ok && Array.isArray(data) ? data.filter(a => a.active) : []);
+    } catch (error) {
+      setArticles([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const syncOfflineReceipts = async () => {
     const offline = JSON.parse(localStorage.getItem("offline_receipts") || "[]");
     if (offline.length === 0) return;
@@ -61,7 +63,6 @@ export default function Prodaja() {
 
         const result = await res.json();
 
-        // Check for success or if it already exists in DB
         if (res.ok || (result.error && result.error.toLowerCase().includes("unique constraint"))) {
           remainingOffline = remainingOffline.filter(r => r.receiptNumber !== receipt.receiptNumber);
           localStorage.setItem("offline_receipts", JSON.stringify(remainingOffline));
@@ -71,99 +72,44 @@ export default function Prodaja() {
           break; 
         }
       } catch (e) {
-        alert("Mreža nedostupna. Provjerite vezu prije ponovnog pokušaja.");
+        alert("Mreža nedostupna. Provjerite vezu.");
         break; 
       }
     }
     
     setIsSyncing(false);
-    if (remainingOffline.length === 0 && offline.length > 0) {
-      alert("Svi offline računi su uspješno sinkronizirani!");
-    }
-  };
-
-  useEffect(() => {
-    fetchArticles();
-    syncOfflineReceipts();
-  }, []);
-
-  const totalBrutto = selectedItems.reduce((sum, item) =>
-    sum + (Number(item.price) * Number(item.quantity)), 0
-  );
-
-  const totalNetto = selectedItems.reduce((sum, item) => {
-    const price = Number(item.price);
-    const qty = Number(item.quantity);
-    const rate = Number(item.taxRate || 0);
-    const lineBrutto = price * qty;
-    const lineNetto = lineBrutto / (1 + (rate / 100));
-    return sum + lineNetto;
-  }, 0);
-
-  const totalTax = totalBrutto - totalNetto;
-
-  const fetchArticles = async () => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/articles`, {
-        credentials: "include",
-      });
-      const data = await response.json();
-      if (!response.ok || !Array.isArray(data)) {
-        setArticles([]);
-      } else {
-        setArticles(data.filter(a => a.active));
-      }
-      setLoading(false);
-    } catch (error) {
-      setArticles([]);
-      setLoading(false);
-    }
+    if (remainingOffline.length === 0 && offline.length > 0) alert("Svi računi sinkronizirani!");
   };
 
   const addItem = (article) => {
-    const existing = selectedItems.find(item => item.articleId === article.id);
-    if (existing) {
-      setSelectedItems(selectedItems.map(item =>
-        item.articleId === article.id ? { ...item, quantity: item.quantity + 1 } : item
-      ));
-    } else {
-      setSelectedItems([...selectedItems, {
-        articleId: article.id,
-        name: article.name,
-        price: article.price,
-        quantity: 1,
-        taxRate: article.taxRate,
-        description: article.description,
-        unit: article.unit,
-      }]);
-    }
-  };
-
-  const removeItem = (articleId) => {
-    setSelectedItems(selectedItems.filter(item => item.articleId !== articleId));
+    setSelectedItems(prev => {
+      const existing = prev.find(item => item.articleId === article.id);
+      if (existing) {
+        return prev.map(item => item.articleId === article.id ? { ...item, quantity: item.quantity + 1 } : item);
+      }
+      return [...prev, { articleId: article.id, name: article.name, price: article.price, quantity: 1, taxRate: article.taxRate }];
+    });
   };
 
   const updateQuantity = (articleId, quantity) => {
     if (quantity <= 0) {
-      removeItem(articleId);
+      setSelectedItems(prev => prev.filter(item => item.articleId !== articleId));
     } else {
-      setSelectedItems(selectedItems.map(item =>
-        item.articleId === articleId ? { ...item, quantity } : item
-      ));
+      setSelectedItems(prev => prev.map(item => item.articleId === articleId ? { ...item, quantity } : item));
     }
+  };
+
+  const removeItem = (articleId) => {
+    setSelectedItems(prev => prev.filter(item => item.articleId !== articleId));
   };
 
   const handleCheckout = async () => {
     if (selectedItems.length === 0) return null;
 
-    const finalReceiptNumber = `RCN-${Date.now()}`;
-    const paymentTypeMap = { "Gotovina": "GOTOVINA", "Kartica": "KARTICA" };
-    const paymentTypeValue = paymentTypeMap[paymentMethod] || "GOTOVINA";
-
     const receiptData = {
-      receiptNumber: finalReceiptNumber,
+      receiptNumber: `RCN-${Date.now()}`,
       invoiceType: "RAČUN",
-      paymentType: paymentTypeMap[paymentMethod] || "GOTOVINA",
+      paymentType: paymentMethod === "Kartica" ? "KARTICA" : "GOTOVINA",
       brutto: totalBrutto,
       netto: totalNetto,
       taxValue: totalTax,
@@ -185,22 +131,19 @@ export default function Prodaja() {
         body: JSON.stringify(receiptData),
       });
 
-      if (response.ok) {
-        const receipt = await response.json();
-        return receipt;
-      } else {
-        const error = await response.json();
-        if (error.error && error.error.toLowerCase().includes("unique constraint")) return receiptData;
-        alert("Greška: " + (error.error || "Nepoznata greška"));
-        return null;
-        return null;
-      }
+      if (response.ok) return await response.json();
+      
+      const error = await response.json();
+      if (error.error?.toLowerCase().includes("unique constraint")) return receiptData;
+      
+      alert("Greška: " + (error.error || "Nepoznata greška"));
+      return null;
     } catch (error) {
       const offlineItems = JSON.parse(localStorage.getItem("offline_receipts") || "[]");
       offlineItems.push(receiptData);
       localStorage.setItem("offline_receipts", JSON.stringify(offlineItems));
       setOfflineCount(offlineItems.length);
-      alert("Spremljeno offline (Greška u mreži).");
+      alert("Spremljeno offline.");
       return receiptData; 
     }
   };
@@ -217,17 +160,18 @@ export default function Prodaja() {
         const iznFormatted = Math.floor(iznInt / 100).toString().padStart(8, "0") + "," + (iznInt % 100).toString().padStart(2, "0");
         return `https://porezna.gov.hr/rn?jir=${jir}&datv=${datv}&izn=${iznFormatted}`;
       };
+
       printFunction({
-        num: receipt.invoiceNumber ?? "",
+        num: receipt.invoiceNumber || receipt.receiptNumber,
         payment: paymentMethod,
         items: selectedItems,
         time: CroatianDateTime(),
         cashier: "doria",
-        base: receipt.netto ?? 0,
-        tax: receipt.taxValue ?? 0,
+        base: receipt.netto ?? totalNetto,
+        tax: receipt.taxValue ?? totalTax,
         jir: receipt.jir ?? "",
         zki: receipt.zki ?? "",
-        link: buildPoreznaLink(receipt.jir, receipt.invoiceDate || receipt.createdAt, receipt.brutto ?? 0),
+        link: buildPoreznaLink(receipt.jir, receipt.invoiceDate || receipt.createdAt || new Date(), receipt.brutto ?? totalBrutto),
         phone: "0916043415",
         email: "info@kset.org",
       });
@@ -237,7 +181,7 @@ export default function Prodaja() {
   if (loading) return <div className="page-container" style={{ color: '#333', padding: '40px 20px' }}>Učitavanje...</div>;
 
   const categoryId = searchParams.get("category");
-  const filteredArticles = categoryId ? articles.filter(a => a.categoryId == categoryId) : articles;
+  const filteredArticles = categoryId ? articles.filter(a => String(a.categoryId) === categoryId) : articles;
 
   return (
     <div className="page-container">
@@ -303,7 +247,7 @@ export default function Prodaja() {
                         <button onClick={() => updateQuantity(item.articleId, item.quantity - 1)}>-</button>
                         <input
                           value={item.quantity}
-                          onChange={(e) => updateQuantity(item.articleId, parseInt(e.target.value))}
+                          readOnly
                         />
                         <button onClick={() => updateQuantity(item.articleId, item.quantity + 1)}>+</button>
                       </div>

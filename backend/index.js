@@ -405,6 +405,8 @@ app.post("/api/receipts", requireAuth, async (req, res) => {
         receipt.invoiceNumber = firaResult.invoiceNumber;
         receipt.jir = firaResult.jir;
         receipt.zki = firaResult.zki;
+        receipt.invoiceDate = firaResult.invoiceDate;
+
       } catch (updateError) {
         console.error("Failed to update receipt with fiscal data:", updateError);
         if (updateError.code === 'P2002') {
@@ -418,7 +420,6 @@ app.post("/api/receipts", requireAuth, async (req, res) => {
           });
         }
       }
-      receipt.invoiceDate = firaResult.invoiceDate;
     }
 
     //rounding check

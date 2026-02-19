@@ -1,26 +1,41 @@
 import { useRef, useEffect } from "react";
 import { QRCodeSVG } from "qrcode.react";
 
-
 const Receipt = ({ order }) => {
-  if (!order || !order.items) return null;
-   if (!order.items) return null;
+   if (!order || !order.items) return null;
 
    const W = 42;
    const line = "─".repeat(W);
+   
    const center = (text) => {
       const pad = Math.max(0, Math.floor((W - text.length) / 2));
       return " ".repeat(pad) + text;
    };
+   const rpad = (s, n) => s.length >= n ? s.slice(0, n) : s + " ".repeat(n - s.length);
+   const lpad = (s, n) => s.length >= n ? s.slice(0, n) : " ".repeat(n - s.length) + s;
+   const padLeft = (s, n) => lpad(String(s), n);
+
    const total = order.items.reduce((acc, item) => acc + item.price * item.quantity, 0);
+
+   // RACUNANJE POREZNIH GRUPA
+   const taxGroups = order.items.reduce((acc, item) => {
+      const rate = Number(item.taxRate || 0);
+      const brutto = item.price * item.quantity;
+      const netto = brutto / (1 + rate / 100);
+      const tax = brutto - netto;
+
+      if (!acc[rate]) {
+         acc[rate] = { base: 0, tax: 0 };
+      }
+      acc[rate].base += netto;
+      acc[rate].tax += tax;
+      return acc;
+   }, {});
 
    const COL_NAME = 20;
    const COL_QTY  = 4;
    const COL_PRC  = 7;
    const COL_TOT  = 7;
-
-   const rpad = (s, n) => s.length >= n ? s.slice(0, n) : s + " ".repeat(n - s.length);
-   const lpad = (s, n) => s.length >= n ? s.slice(0, n) : " ".repeat(n - s.length) + s;
 
    const itemLines = order.items.map(item => {
       const name = item.name || "";
@@ -62,8 +77,8 @@ const Receipt = ({ order }) => {
          <pre style={s.pre}>{line}</pre>
 
          <pre style={s.pre}>{
-`Telefon: ${order.phone}
-E-mail:  ${order.email}
+`Telefon: ${order.phone || "0916043415"}
+E-mail:  ${order.email || "email od blagajnika ili stogod"}
 ${line}
 Račun br:         ${order.num}
 Vrijeme:          ${order.time}
@@ -99,7 +114,6 @@ ${center("#fiskalizacija")}`}
    );
 };
 
-
 const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj, autoPrint }) => {
    const receiptRef = useRef();
    const printOrderRef = useRef(null);
@@ -121,7 +135,6 @@ const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj, autoPrint }) 
    const printaj = (updatedOrder) => {
       if (updatedOrder) {
         printOrderRef.current = updatedOrder;
-        // Force re-render so receiptRef gets updated HTML, then print
         setTimeout(doPrint, 50);
       } else {
         doPrint();
@@ -133,7 +146,6 @@ const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj, autoPrint }) 
          printOrderRef.current = order;
          setTimeout(doPrint, 50);
       }
-   // eslint-disable-next-line react-hooks/exhaustive-deps
    }, []);
 
   const handleClick = () => {
