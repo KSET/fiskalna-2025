@@ -106,12 +106,13 @@ export async function handleOrderFiscalization(order) {
 
   console.log(`Sending to FIRA: ${JSON.stringify(data, null, 2)}`);
 
-  // MOCK response
+  // MOCK response (comment out when using real FIRA)
   const mockResponse = {
     invoiceNumber: `355-${Date.now()}-7`,
     invoiceDate: '2026-02-19T12:29:00',
     jir: '4fd92a0f-62fa-421f-a932-1dbd9f5af34b',
     zki: '809d7831f8b4a434843634d3af71cf5a',
+    qrCode: 'iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAABuUlEQVR4Xu2WUWoDMQwFDb6WQVcX+FqC7Ru52UBo/6T2Z50lrDOBSPb4Zcf12xifH9zjIQ9h/CXxMaYP2zF1b5tpC9lcoanrsjNtIT53rDVF17CctpHLl7n5VBHNZFhW8T1tIbr0qSq4wvZm2kJQYr/Hhzt1hMFq6rd3aOvOqCe+ZIhtp9kZLOfdaSlBjzWlfPDilio6SMhARw8fSzf3itYSTRf9kRbXFXnfQdCPFeVgGcc4xa8nCD+RXmdryBBPS+rJ2SyO8DAtp/G9FpK95TJSS6B+B3H6U5N8Ih83od5C5rF+UIfkX0Yt9STdU7snygH3GpQSfnSQrwolvWNlC2EZJQWFKCM8Jx0kiDzJOAkMeU8ZHeRC96GHFFIpdXl3Wkk4U8oIXAwLDtir02JyNkwyznzgWu8KSglZlAnBl6S/KmohiJ7/TjpamRq3IbWEPkkIBrqcv4wGshV2kmPTqiGKtRAGu6cmM8WpqIOge4yTsmICr05ryUYS7Z5uMo3UdA+hTRKJ3aOUTkLe6SVXjohNJMgiHuvO3vWQK2UkiILL70SqJRmvCgs2zaS+3RXUkp/HQx7C+H/yBb/NSF9L7TUmAAAAAElFTkSuQmCC',
   };
   console.log(`FIRA mock response: ${JSON.stringify(mockResponse)}`);
   return mockResponse;

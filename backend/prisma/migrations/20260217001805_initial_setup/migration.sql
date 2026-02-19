@@ -37,7 +37,8 @@ CREATE TABLE "Article" (
 -- CreateTable
 CREATE TABLE "Receipt" (
     "id" TEXT NOT NULL,
-    "receiptNumber" TEXT NOT NULL,
+    "invoiceNumber" TEXT,
+    "qrCode" TEXT,
     "webshopOrderId" TEXT,
     "webshopType" TEXT DEFAULT 'CUSTOM',
     "webshopEvent" TEXT,
@@ -158,7 +159,7 @@ CREATE UNIQUE INDEX "Article_name_key" ON "Article"("name");
 CREATE UNIQUE INDEX "Article_productCode_key" ON "Article"("productCode");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Receipt_receiptNumber_key" ON "Receipt"("receiptNumber");
+CREATE UNIQUE INDEX "Receipt_invoiceNumber_key" ON "Receipt"("invoiceNumber");
 
 -- CreateIndex
 CREATE INDEX "ReceiptItem_receiptId_idx" ON "ReceiptItem"("receiptId");

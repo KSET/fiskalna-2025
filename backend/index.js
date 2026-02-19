@@ -258,9 +258,10 @@ app.get("/api/receipts/:id/print", requireAuth, async (req, res) => {
         const pad = (n) => n.toString().padStart(2, '0');
         const datv = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
         const iznInt = Math.round(Math.abs(receipt.brutto) * 100);
-        const iznFormatted = Math.floor(iznInt / 100).toString().padStart(8, '0') + ',' + (iznInt % 100).toString().padStart(2, '0');
+        const iznFormatted = (receipt.brutto < 0 ? '-' : '') + Math.floor(iznInt / 100).toString().padStart(8, '0') + ',' + (iznInt % 100).toString().padStart(2, '0');
         return `https://porezna.gov.hr/rn?jir=${receipt.jir}&datv=${datv}&izn=${iznFormatted}`;
       })(),
+      qrCode: receipt.qrCode || null,
       phone: "0916043415",
       email: "info@kset.org",
     };
@@ -396,16 +397,17 @@ app.post("/api/receipts", requireAuth, async (req, res) => {
         await prisma.receipt.update({
           where: { id: receipt.id },
           data: {
-
-            invoiceNumber: firaResult.invoiceNumber, 
+            invoiceNumber: firaResult.invoiceNumber,
             jir: firaResult.jir,
             zki: firaResult.zki,
+            qrCode: firaResult.qrCode || null,
           },
         });
         receipt.invoiceNumber = firaResult.invoiceNumber;
         receipt.jir = firaResult.jir;
         receipt.zki = firaResult.zki;
         receipt.invoiceDate = firaResult.invoiceDate;
+        receipt.qrCode = firaResult.qrCode;
 
       } catch (updateError) {
         console.error("Failed to update receipt with fiscal data:", updateError);
@@ -524,12 +526,14 @@ app.put("/api/receipts/:id/storno", requireAuth, async (req, res) => {
           invoiceNumber: firaResult.invoiceNumber,
           jir: firaResult.jir,
           zki: firaResult.zki,
+          qrCode: firaResult.qrCode || null,
         },
       });
       stornoReceipt.invoiceNumber = firaResult.invoiceNumber;
       stornoReceipt.jir = firaResult.jir;
       stornoReceipt.zki = firaResult.zki;
       stornoReceipt.invoiceDate = firaResult.invoiceDate;
+      stornoReceipt.qrCode = firaResult.qrCode;
     }
 
     res.json(stornoReceipt);

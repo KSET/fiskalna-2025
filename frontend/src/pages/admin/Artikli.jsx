@@ -18,11 +18,6 @@ export default function Artikli() {
     active: true,
   });
 
-  useEffect(() => {
-    fetchArticles();
-    fetchCategories();
-  }, []);
-
   const fetchArticles = async () => {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/articles`, {
@@ -37,15 +32,28 @@ export default function Artikli() {
     }
   };
 
-  const fetchCategories = async () => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/categories`, { credentials: "include" });
-      const data = await response.json();
-      if (Array.isArray(data)) setCategories(data);
-    } catch (error) {
-      console.error("Error fetching categories:", error);
-    }
-  };
+  useEffect(() => {
+    (async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/articles`, { credentials: "include" });
+        const data = await response.json();
+        setArticles(data);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching articles:", error);
+        setLoading(false);
+      }
+    })();
+    (async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/categories`, { credentials: "include" });
+        const data = await response.json();
+        if (Array.isArray(data)) setCategories(data);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+      }
+    })();
+  }, []);
 
   const resetForm = () => {
     setFormData({

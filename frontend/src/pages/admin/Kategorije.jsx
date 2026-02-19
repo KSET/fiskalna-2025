@@ -13,10 +13,6 @@ export default function Kategorije() {
     active: true,
   });
 
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
   const fetchCategories = async () => {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/categories`, {
@@ -31,6 +27,21 @@ export default function Kategorije() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/categories`, { credentials: "include" });
+        const data = await response.json();
+        setCategories(Array.isArray(data) ? data : []);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+        setCategories([]);
+        setLoading(false);
+      }
+    })();
+  }, []);
 
   const resetForm = () => {
     setFormData({

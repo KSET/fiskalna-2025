@@ -43,8 +43,8 @@ model Article {
   name            String   @unique
   productCode     String   @unique
   kpdCode         String
-  price           Float    // Bruto iznos in €
-  taxRate         Float    // PDV percentage
+  price           Decimal  @db.Decimal(10, 2) // Bruto iznos in €
+  taxRate         Decimal  @db.Decimal(10, 2) // PDV percentage
   description     String?
   unit            String?
   active          Boolean  @default(true)
@@ -69,6 +69,7 @@ model Receipt {
   invoiceNumber         String?       @unique
   jir                   String?
   zki                   String?
+  qrCode                String?
   webshopOrderId        String?       // External webshop order ID
   webshopType           String?       @default("CUSTOM") // WOO_COMMERCE, SHOPIFY, CUSTOM
   webshopEvent          String?
@@ -79,9 +80,9 @@ model Receipt {
   paymentGatewayName    String?
   userId                String
   user                  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  brutto                Float
-  netto                 Float
-  taxValue              Float
+  brutto                Decimal  @db.Decimal(10, 2)
+  netto                 Decimal  @db.Decimal(10, 2)
+  taxValue              Decimal  @db.Decimal(10, 2)
   currency              String        @default("EUR")
   taxesIncluded         Boolean       @default(false)
   dueDate               DateTime?
@@ -95,8 +96,8 @@ model Receipt {
   termsEN               String?
   termsDE               String?
   internalNote          String?
-  discountValue         Float         @default(0)
-  shippingCost          Float         @default(0)
+  discountValue         Decimal  @db.Decimal(10, 2) @default(0)
+  shippingCost          Decimal  @db.Decimal(10, 2) @default(0)
   status                ReceiptStatus @default(RACUN)
   items                 ReceiptItem[]
   transaction           Transaction?
@@ -143,9 +144,9 @@ model ReceiptItem {
   name            String?
   description     String?
   lineItemId      String?
-  quantity        Float
-  price           Float
-  taxRate         Float
+  quantity        Decimal  @db.Decimal(10, 2)
+  price           Decimal  @db.Decimal(10, 2)
+  taxRate         Decimal  @db.Decimal(10, 2)
   unit            String?
   createdAt       DateTime @default(now())
 
@@ -159,7 +160,7 @@ model Transaction {
   receipt   Receipt  @relation(fields: [receiptId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  amount    Float
+  amount    Decimal  @db.Decimal(10, 2)
   createdAt DateTime @default(now())
 
   @@index([receiptId])
@@ -169,7 +170,7 @@ model Transaction {
 model SalesReport {
   id                  String   @id @default(cuid())
   date                DateTime @default(now())
-  totalSalesAmount    Float
+  totalSalesAmount    Decimal  @db.Decimal(10, 2)
   invoiceCount        Int
   description         String?
   createdAt           DateTime @default(now())

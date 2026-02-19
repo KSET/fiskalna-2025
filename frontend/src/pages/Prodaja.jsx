@@ -38,7 +38,7 @@ export default function Prodaja() {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/articles`, { credentials: "include" });
       const data = await response.json();
       setArticles(response.ok && Array.isArray(data) ? data.filter(a => a.active) : []);
-    } catch (error) {
+    } catch {
       setArticles([]);
     } finally {
       setLoading(false);
@@ -71,7 +71,7 @@ export default function Prodaja() {
           alert(`Server je odbio račun ${receipt.receiptNumber}: ${result.error}`);
           break; 
         }
-      } catch (e) {
+      } catch {
         alert("Mreža nedostupna. Provjerite vezu.");
         break; 
       }
@@ -138,7 +138,7 @@ export default function Prodaja() {
       
       alert("Greška: " + (error.error || "Nepoznata greška"));
       return null;
-    } catch (error) {
+    } catch {
       const offlineItems = JSON.parse(localStorage.getItem("offline_receipts") || "[]");
       offlineItems.push(receiptData);
       localStorage.setItem("offline_receipts", JSON.stringify(offlineItems));
@@ -157,7 +157,7 @@ export default function Prodaja() {
         const pad = (n) => n.toString().padStart(2, "0");
         const datv = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
         const iznInt = Math.round(Math.abs(brutto) * 100);
-        const iznFormatted = Math.floor(iznInt / 100).toString().padStart(8, "0") + "," + (iznInt % 100).toString().padStart(2, "0");
+        const iznFormatted = (brutto < 0 ? "-" : "") + Math.floor(iznInt / 100).toString().padStart(8, "0") + "," + (iznInt % 100).toString().padStart(2, "0");
         return `https://porezna.gov.hr/rn?jir=${jir}&datv=${datv}&izn=${iznFormatted}`;
       };
 

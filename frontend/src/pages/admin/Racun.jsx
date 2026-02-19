@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 
 const Receipt = ({ order }) => {
@@ -105,7 +105,11 @@ ZKI: ${order.zki || "N/A"}
 ${center("#fiskalizacija")}`}
          </pre>
 
-         {order.link ? (
+         {order.qrCode ? (
+            <div style={s.qr}>
+               <img src={`data:image/png;base64,${order.qrCode}`} width={110} height={110} alt="QR" />
+            </div>
+         ) : order.link ? (
             <div style={s.qr}>
                <QRCodeSVG value={order.link} size={110} level="Q" bgColor="#FFFFFF" fgColor="#000000" />
             </div>
@@ -116,7 +120,8 @@ ${center("#fiskalizacija")}`}
 
 const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj, autoPrint }) => {
    const receiptRef = useRef();
-   const printOrderRef = useRef(null);
+   const [printOrder, setPrintOrder] = useState(null);
+   const shouldPrintRef = useRef(false);
 
    const doPrint = () => {
       const w = window.open("", "_blank");
@@ -133,20 +138,25 @@ const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj, autoPrint }) 
    };
 
    const printaj = (updatedOrder) => {
-      if (updatedOrder) {
-        printOrderRef.current = updatedOrder;
-        setTimeout(doPrint, 50);
-      } else {
-        doPrint();
-      }
+      shouldPrintRef.current = true;
+      setPrintOrder(updatedOrder ?? order);
    };
 
    useEffect(() => {
       if (autoPrint && order) {
-         printOrderRef.current = order;
+         shouldPrintRef.current = true;
+         setTimeout(() => setPrintOrder(order), 0);
+      }
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, []);
+
+   useEffect(() => {
+      if (shouldPrintRef.current && printOrder) {
+         shouldPrintRef.current = false;
          setTimeout(doPrint, 50);
       }
-   }, []);
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [printOrder]);
 
   const handleClick = () => {
     if (onFiskaliziraj) {
@@ -160,7 +170,7 @@ const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj, autoPrint }) 
       <div>
          <div style={{ display: "none" }}>
             <div ref={receiptRef}>
-               <Receipt order={printOrderRef.current ?? order} />
+               <Receipt order={printOrder ?? order} />
             </div>
          </div>
 

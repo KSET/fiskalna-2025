@@ -12,10 +12,6 @@ export default function UkupniIzvjestaj() {
     description: "",
   });
 
-  useEffect(() => {
-    fetchReports();
-  }, []);
-
   const fetchReports = async () => {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/reports`, {
@@ -29,6 +25,20 @@ export default function UkupniIzvjestaj() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/reports`, { credentials: "include" });
+        const data = await response.json();
+        setReports(data);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching reports:", error);
+        setLoading(false);
+      }
+    })();
+  }, []);
 
   const handleCreateReport = async (e) => {
     e.preventDefault();
