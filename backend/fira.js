@@ -108,9 +108,10 @@ export async function handleOrderFiscalization(order) {
 
   // MOCK response
   const mockResponse = {
-    invoiceNumber: '355-6-7',
-    jir: '0374439f-7c06-4018-91db-ec4580d9b97e',
-    zki: 'edfee1dfbe4faf5e921b3b0dc6aa69e9',
+    invoiceNumber: `355-${Date.now()}-7`,
+    invoiceDate: '2026-02-19T12:29:00',
+    jir: '4fd92a0f-62fa-421f-a932-1dbd9f5af34b',
+    zki: '809d7831f8b4a434843634d3af71cf5a',
   };
   console.log(`FIRA mock response: ${JSON.stringify(mockResponse)}`);
   return mockResponse;
@@ -126,7 +127,7 @@ export async function handleOrderFiscalization(order) {
   //   if (response.status === 200) {
   //     const responseData = JSON.parse(responseText);
   //     console.log(`FIRA fiscalized success, račun: ${responseData.invoiceNumber}, JIR: ${responseData.jir}`);
-  //     return { invoiceNumber: responseData.invoiceNumber, jir: responseData.jir, zki: responseData.zki };
+  //     return { invoiceNumber: responseData.invoiceNumber, invoiceDate: responseData.invoiceDate, jir: responseData.jir, zki: responseData.zki };
   //   } else {
   //     console.log(`FIRA invoice creation FAILED. Status ${response.status}: ${responseText}`);
   //     return null;

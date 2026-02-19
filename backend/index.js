@@ -250,9 +250,17 @@ app.get("/api/receipts/:id/print", requireAuth, async (req, res) => {
       cashier: receipt.user?.name || "N/A",
       base: receipt.netto,
       tax: receipt.taxValue,
-      jir: receipt.id.slice(0, 8).toUpperCase(), // Using first 8 chars of receipt ID as JIR
-      zki: Math.abs(receipt.id.charCodeAt(0) * 1000000).toString().slice(-8), // Generate ZKI from ID
-      link: `https://app.fira.finance/receipt/${receipt.id}`,
+      jir: receipt.jir,
+      zki: receipt.zki,
+      link: (() => {
+        if (!receipt.jir) return null;
+        const d = new Date(receipt.createdAt);
+        const pad = (n) => n.toString().padStart(2, '0');
+        const datv = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
+        const iznInt = Math.round(Math.abs(receipt.brutto) * 100);
+        const iznFormatted = Math.floor(iznInt / 100).toString().padStart(8, '0') + ',' + (iznInt % 100).toString().padStart(2, '0');
+        return `https://porezna.gov.hr/rn?jir=${receipt.jir}&datv=${datv}&izn=${iznFormatted}`;
+      })(),
       phone: "0916043415",
       email: "info@kset.org",
     };
@@ -393,6 +401,7 @@ app.post("/api/receipts", requireAuth, async (req, res) => {
       receipt.invoiceNumber = firaResult.invoiceNumber;
       receipt.jir = firaResult.jir;
       receipt.zki = firaResult.zki;
+      receipt.invoiceDate = firaResult.invoiceDate;
     }
 
     //rounding check

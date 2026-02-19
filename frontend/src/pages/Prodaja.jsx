@@ -16,15 +16,11 @@ export default function Prodaja() {
   const [paymentMethod, setPaymentMethod] = useState("Gotovina");
   const [loading, setLoading] = useState(true);
   const [searchParams] = useSearchParams();
-
-  // --- NEW STATE FOR OFFLINE TRACKING ---
   const [offlineCount, setOfflineCount] = useState(0);
 
-  // Function to sync receipts saved in localStorage
   const syncOfflineReceipts = async () => {
     const offline = JSON.parse(localStorage.getItem("offline_receipts") || "[]");
     setOfflineCount(offline.length);
-    
     if (offline.length === 0) return;
 
     console.log(`Pokušavam sinkronizirati ${offline.length} offline računa...`);
@@ -32,38 +28,32 @@ export default function Prodaja() {
 
     for (const receipt of offline) {
       try {
-        const res = await fetch("http://localhost:3000/api/receipts", {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/receipts`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify(receipt),
         });
 
-if (res.ok) {
-  // Normal success
-  remainingOffline = remainingOffline.filter(r => r.receiptNumber !== receipt.receiptNumber);
-  localStorage.setItem("offline_receipts", JSON.stringify(remainingOffline));
-  setOfflineCount(remainingOffline.length);
-} else {
-  const errorData = await res.json();
-  
-  if (errorData.error && errorData.error.includes("Unique constraint failed")) {
-    console.warn("Račun već postoji u bazi, uklanjam iz lokala...", receipt.receiptNumber);
-    
-    remainingOffline = remainingOffline.filter(r => r.receiptNumber !== receipt.receiptNumber);
-    localStorage.setItem("offline_receipts", JSON.stringify(remainingOffline));
-    setOfflineCount(remainingOffline.length);
-  } else {
-    console.error("Server rejected the offline receipt for other reasons:", errorData);
-    break; 
-  }
-}
+        if (res.ok) {
+          remainingOffline = remainingOffline.filter(r => r.receiptNumber !== receipt.receiptNumber);
+          localStorage.setItem("offline_receipts", JSON.stringify(remainingOffline));
+          setOfflineCount(remainingOffline.length);
+        } else {
+          const errorData = await res.json();
+          if (errorData.error && errorData.error.includes("Unique constraint failed")) {
+            remainingOffline = remainingOffline.filter(r => r.receiptNumber !== receipt.receiptNumber);
+            localStorage.setItem("offline_receipts", JSON.stringify(remainingOffline));
+            setOfflineCount(remainingOffline.length);
+          } else {
+            break;
+          }
+        }
       } catch (e) {
-        console.error("Network still down.");
-        break; 
+        break;
       }
     }
-    
+
     if (remainingOffline.length === 0 && offline.length > 0) {
       alert("Svi offline računi su uspješno sinkronizirani!");
     }
@@ -74,8 +64,7 @@ if (res.ok) {
     syncOfflineReceipts();
   }, []);
 
-  // Calculations for the current cart
-  const totalBrutto = selectedItems.reduce((sum, item) => 
+  const totalBrutto = selectedItems.reduce((sum, item) =>
     sum + (Number(item.price) * Number(item.quantity)), 0
   );
 
@@ -149,18 +138,6 @@ if (res.ok) {
     const receiptNumber = `RCN-${Date.now()}`;
     const paymentTypeMap = { "Gotovina": "GOTOVINA", "Kartica": "KARTICA" };
     const paymentTypeValue = paymentTypeMap[paymentMethod] || "GOTOVINA";
-    try {
-      // Calculate totals
-      const brutto = selectedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-      const netto = 0; // Calculate based on tax rates
-      const taxValue = 0; // Calculate based on tax rates
-
-      // Validate payment type is uppercase
-      const paymentTypeMap = {
-        "Gotovina": "GOTOVINA",
-        "Kartica": "KARTICA",
-      };
-      const paymentTypeValue = paymentTypeMap[paymentMethod] || "GOTOVINA";
 
     const receiptData = {
       receiptNumber,
@@ -182,7 +159,7 @@ if (res.ok) {
     };
 
     try {
-      const response = await fetch("http://localhost:3000/api/receipts", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/receipts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -190,19 +167,18 @@ if (res.ok) {
       });
 
       if (response.ok) {
-        alert("Račun je uspješno kreiran!");
-        return true;
+        const receipt = await response.json();
+        return receipt;
       } else {
         const error = await response.json();
         alert("Greška: " + (error.error || "Nepoznata greška"));
-        return false;
+        return null;
       }
     } catch (error) {
       console.warn("Mreža nije dostupna. Spremanje lokalno...");
       const offlineItems = JSON.parse(localStorage.getItem("offline_receipts") || "[]");
       offlineItems.push({ ...receiptData, needsSync: true, timeSaved: new Date() });
       localStorage.setItem("offline_receipts", JSON.stringify(offlineItems));
-      
       setOfflineCount(offlineItems.length);
       alert("Račun spremljen lokalno (Offline mod). Sinkronizirajte unutar 48h!");
       return true;
@@ -210,9 +186,31 @@ if (res.ok) {
   };
 
   const handleFiskaliziraj = async (printFunction) => {
-    const success = await handleCheckout();
-    if (success) {
-      printFunction();
+    const receipt = await handleCheckout();
+    if (receipt) {
+      const buildPoreznaLink = (jir, dateStr, brutto) => {
+        if (!jir) return "";
+        const d = new Date(dateStr);
+        const pad = (n) => n.toString().padStart(2, "0");
+        const datv = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
+        const iznInt = Math.round(Math.abs(brutto) * 100);
+        const iznFormatted = Math.floor(iznInt / 100).toString().padStart(8, "0") + "," + (iznInt % 100).toString().padStart(2, "0");
+        return `https://porezna.gov.hr/rn?jir=${jir}&datv=${datv}&izn=${iznFormatted}`;
+      };
+      printFunction({
+        num: receipt.invoiceNumber ?? "",
+        payment: paymentMethod,
+        items: selectedItems,
+        time: CroatianDateTime(),
+        cashier: "doria",
+        base: receipt.netto ?? 0,
+        tax: receipt.taxValue ?? 0,
+        jir: receipt.jir ?? "",
+        zki: receipt.zki ?? "",
+        link: buildPoreznaLink(receipt.jir, receipt.invoiceDate || receipt.createdAt, receipt.brutto ?? 0),
+        phone: "0916043415",
+        email: "info@kset.org",
+      });
     }
   };
 
@@ -224,14 +222,14 @@ if (res.ok) {
   return (
     <div className="page-container">
       <h1>
-        Prodaja 
+        Prodaja
         {offlineCount > 0 && (
-          <span style={{color: 'red', fontSize: '14px', marginLeft: '10px'}}> 
+          <span style={{ color: 'red', fontSize: '14px', marginLeft: '10px' }}>
             ({offlineCount} čekaju sinkronizaciju)
           </span>
         )}
       </h1>
-      
+
       <div className="prodaja-layout">
         <div className="articles-grid">
           <h2>{categoryId ? "Artikli u kategoriji" : "Svi artikli"}</h2>
@@ -256,19 +254,24 @@ if (res.ok) {
               <div className="cart-items">
                 {selectedItems.map(item => (
                   <div key={item.articleId} className="cart-item">
-                    <div>
+                    <div className="cart-item-info">
                       <strong>{item.name}</strong>
-                      <p><span className="currency">{item.price.toFixed(2)}</span> x</p>
+                      <p><span className="currency">{item.price.toFixed(2)}</span> / kom</p>
                     </div>
-                    <div className="quantity-control">
-                      <button onClick={() => updateQuantity(item.articleId, item.quantity - 1)}>-</button>
-                      <input value={item.quantity} readOnly />
-                      <button onClick={() => updateQuantity(item.articleId, item.quantity + 1)}>+</button>
+                    <div className="cart-item-controls">
+                      <div className="quantity-control">
+                        <button onClick={() => updateQuantity(item.articleId, item.quantity - 1)}>-</button>
+                        <input
+                          value={item.quantity}
+                          onChange={(e) => updateQuantity(item.articleId, parseInt(e.target.value))}
+                        />
+                        <button onClick={() => updateQuantity(item.articleId, item.quantity + 1)}>+</button>
+                      </div>
+                      <div className="item-total">
+                        <span className="currency">{(item.price * item.quantity).toFixed(2)}</span>
+                      </div>
+                      <button onClick={() => removeItem(item.articleId)} className="btn-danger cart-remove">✕</button>
                     </div>
-                    <div className="item-total">
-                      <span className="currency">{(item.price * item.quantity).toFixed(2)}</span>
-                    </div>
-                    <button onClick={() => removeItem(item.articleId)} className="btn-danger">✕</button>
                   </div>
                 ))}
               </div>
@@ -288,17 +291,16 @@ if (res.ok) {
 
                 <ReceiptPrintButton
                   order={{
-                    num: `RCN-${Date.now()}`,
+                    num: "",
                     payment: paymentMethod,
                     items: selectedItems,
                     time: CroatianDateTime(),
                     cashier: "doria",
-                    base: totalNetto, 
-                    tax: totalTax,    
-                    total: totalBrutto,
-                    jir: 4332,
-                    zki: 3924,
-                    link: "https://jobfair.fer.unizg.hr/",
+                    base: 0,
+                    tax: 0,
+                    jir: "",
+                    zki: "",
+                    link: "",
                     phone: "0916043415",
                     email: "info@kset.org",
                   }}

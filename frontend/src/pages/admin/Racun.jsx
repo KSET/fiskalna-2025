@@ -1,115 +1,137 @@
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { QRCodeSVG } from "qrcode.react";
 
+
 const Receipt = ({ order }) => {
-   if (!(order.items)) return;
+   if (!order.items) return null;
 
-   const line = "-".repeat(42);
-   
-   const padLeft = (text, width) =>
-      text.length >= width ? text.slice(0, width) : " ".repeat(width - text.length) + text;
+   const W = 42;
+   const line = "─".repeat(W);
+   const center = (text) => {
+      const pad = Math.max(0, Math.floor((W - text.length) / 2));
+      return " ".repeat(pad) + text;
+   };
+   const total = order.items.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
-   const maxNameWidth = 14; 
-   const maxLastNameWidth = 7; 
+   const COL_NAME = 20;
+   const COL_QTY  = 4;
+   const COL_PRC  = 7;
+   const COL_TOT  = 7;
 
-   const wrapText = (text, width, lastWidth) => {
-      const lines = [];
-      let start = 0;
-      while (text.length - start >= width) {
-         lines.push(text.slice(start, start + width));
-         start += width;
+   const rpad = (s, n) => s.length >= n ? s.slice(0, n) : s + " ".repeat(n - s.length);
+   const lpad = (s, n) => s.length >= n ? s.slice(0, n) : " ".repeat(n - s.length) + s;
+
+   const itemLines = order.items.map(item => {
+      const name = item.name || "";
+      const qty  = item.quantity.toString();
+      const prc  = item.price.toFixed(2);
+      const tot  = (item.price * item.quantity).toFixed(2);
+
+      const nameChunks = [];
+      for (let i = 0; i < name.length; i += COL_NAME) {
+         nameChunks.push(name.slice(i, i + COL_NAME));
       }
-      lines.push(text.slice(start, Math.min(start + lastWidth, text.length)));
-      return lines;
+      if (nameChunks.length === 0) nameChunks.push("");
+
+      return nameChunks.map((chunk, i) => {
+         if (i < nameChunks.length - 1) {
+            return rpad(chunk, COL_NAME) + " " + " ".repeat(COL_QTY) + " " + " ".repeat(COL_PRC) + " " + " ".repeat(COL_TOT);
+         }
+         return rpad(chunk, COL_NAME) + " " + lpad(qty, COL_QTY) + " " + lpad(prc, COL_PRC) + " " + lpad(tot, COL_TOT);
+      }).join("\n");
+   }).join("\n");
+
+   const s = {
+      wrap:   { fontFamily: "'Courier New', Courier, monospace", fontSize: "11px", width: "72mm", margin: "0 auto", color: "#000", background: "#fff", padding: "4mm 2mm" },
+      center: { textAlign: "center" },
+      big:    { fontSize: "15px", fontWeight: "bold" },
+      pre:    { fontFamily: "inherit", fontSize: "inherit", margin: "0", whiteSpace: "pre", lineHeight: "1.35" },
+      qr:     { textAlign: "center", marginTop: "6px" },
    };
 
-   // --- NEW LOGIC: Group Taxes by Rate ---
-   const taxGroups = order.items.reduce((groups, item) => {
-      const rate = item.taxRate || 0;
-      const brutto = item.price * item.quantity;
-      const netto = brutto / (1 + rate / 100);
-      const taxValue = brutto - netto;
-
-      if (!groups[rate]) {
-         groups[rate] = { base: 0, tax: 0 };
-      }
-      groups[rate].base += netto;
-      groups[rate].tax += taxValue;
-      return groups;
-   }, {});
-
    return (
-      <>
-      <pre className="receipt">
-         {`
-Telefon: ${order.phone}
-E-mail: ${order.email}
+      <div style={s.wrap}>
+         <div style={{ ...s.center, marginBottom: "4px" }}>
+            <div style={s.big}>SS FER</div>
+            <div>Unska 3, 10000 Zagreb, Hrvatska</div>
+            <div>blagajnik@kset.org</div>
+            <div>OIB: 14504100762</div>
+         </div>
 
-Račun br: ${order.num}
-Vrijeme računa: ${order.time}
-Oznaka blagajnika: ${order.cashier}
+         <pre style={s.pre}>{line}</pre>
 
-Artikl${" ".repeat(2)}Kol.${" ".repeat(4)}Cijena${" ".repeat(4)}Iznos
+         <pre style={s.pre}>{
+`Telefon: ${order.phone}
+E-mail:  ${order.email}
 ${line}
-${order.items.map(item => {
-         const nameLines = wrapText(item.name, maxNameWidth, maxLastNameWidth);
-         return nameLines
-            .map((lineText, index) => {
-               if (index === nameLines.length - 1) {
-                  return `${lineText.padEnd(maxLastNameWidth)} ${padLeft(item.quantity.toString(), 4)}  ${padLeft(item.price.toFixed(2), 8)}  ${padLeft((item.price * item.quantity).toFixed(2), 7)}`;
-               } else {
-                  return lineText;
-               }
-            })
-            .join("\n");
-      }).join("\n")}
+Račun br:         ${order.num}
+Vrijeme:          ${order.time}
+Blagajnik:        ${order.cashier}
 ${line}
-UKUPNO${padLeft(Number(order.total).toFixed(2) + " €", 25)}
+${rpad("Naziv", COL_NAME)} ${lpad("Kol.", COL_QTY)} ${lpad("Cij.", COL_PRC)} ${lpad("Iznos", COL_TOT)}
+${line}
+${itemLines}
+${line}
+${rpad("UKUPNO", W - COL_TOT - 1)}${lpad(total.toFixed(2) + " \u20ac", COL_TOT + 1)}
 ${line}
 Način plaćanja: ${order.payment}
 ${line}
-Porez      %  Osnovica    Iznos
+Porez  %   Osnovica     Iznos
 ${line}
-${Object.entries(taxGroups).map(([rate, values]) => {
-   return `PDV ${padLeft(rate, 10)}  ${padLeft(values.base.toFixed(2), 8)}  ${padLeft(values.tax.toFixed(2), 7)}`;
-}).join("\n")}
+PDV    5   ${lpad(order.base.toFixed(2), 10)}   ${lpad(order.tax.toFixed(2), 7)}
 ${line}
 
 JIR: ${order.jir}
 ZKI: ${order.zki}
 
-#fiskalizacija
-`}
-      </pre>
-   <div>
-   <QRCodeSVG
-      value={order.link}
-      size={120}
-      level="Q"
-      bgColor="#FFFFFF"
-      fgColor="#000000"
-    />
-   </div>
-</>
+${center("#fiskalizacija")}`}
+         </pre>
+
+         {order.link ? (
+            <div style={s.qr}>
+               <QRCodeSVG value={order.link} size={110} level="Q" bgColor="#FFFFFF" fgColor="#000000" />
+            </div>
+         ) : null}
+      </div>
    );
 };
 
-const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj }) => {
+
+const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj, autoPrint }) => {
    const receiptRef = useRef();
+   const printOrderRef = useRef(null);
 
-   const printaj = () => {
-
+   const doPrint = () => {
       const w = window.open("", "_blank");
-      w.document.write(
-         receiptRef.current.outerHTML);
+      w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #fff; }
+        @media print { @page { margin: 0; size: 80mm auto; } }
+      </style></head><body>${receiptRef.current.innerHTML}</body></html>`);
       w.document.close();
-      w.print();
-      w.close();
+      setTimeout(() => {
+         w.print();
+         if (onAfterPrint) setTimeout(onAfterPrint, 500);
+      }, 300);
+   };
 
-      if (onAfterPrint) {
-        setTimeout(onAfterPrint, 500); //MORA BITI DELAY INACE NE RADI
+   const printaj = (updatedOrder) => {
+      if (updatedOrder) {
+        printOrderRef.current = updatedOrder;
+        // Force re-render so receiptRef gets updated HTML, then print
+        setTimeout(doPrint, 50);
+      } else {
+        doPrint();
       }
    };
+
+   useEffect(() => {
+      if (autoPrint && order) {
+         printOrderRef.current = order;
+         setTimeout(doPrint, 50);
+      }
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, []);
 
    const handleClick = () => {
       if (onFiskaliziraj) {
@@ -123,7 +145,7 @@ const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj }) => {
       <div>
          <div style={{ display: "none" }}>
             <div ref={receiptRef}>
-               <Receipt order={order}  />
+               <Receipt order={printOrderRef.current ?? order} />
             </div>
          </div>
 
