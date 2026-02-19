@@ -66,12 +66,14 @@ model Category {
 
 model Receipt {
   id                    String        @id @default(cuid())
-  receiptNumber         String        @unique
+  invoiceNumber         String?       @unique
+  jir                   String?
+  zki                   String?
   webshopOrderId        String?       // External webshop order ID
   webshopType           String?       @default("CUSTOM") // WOO_COMMERCE, SHOPIFY, CUSTOM
   webshopEvent          String?
   webshopOrderNumber    String?
-  invoiceType           String        @default("RAĆUN") // PONUDA, RAĆUN, FISKALNI_RAĆUN
+  invoiceType           String        @default("RAČUN") // PONUDA, RAČUN, FISKALNI_RAČUN
   paymentType           PaymentType   @default(GOTOVINA)
   paymentGatewayCode    String?
   paymentGatewayName    String?

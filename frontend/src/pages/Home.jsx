@@ -13,9 +13,9 @@ export default function Home() {
 
   useEffect(() => {
     Promise.all([
-      fetch("http://localhost:3000/protected", { credentials: "include" }).then(res => res.json()),
-      fetch("http://localhost:3000/api/receipts", { credentials: "include" }).then(res => res.json()),
-      fetch("http://localhost:3000/api/articles", { credentials: "include" }).then(res => res.json())
+      fetch(`${import.meta.env.VITE_API_URL}/protected`, { credentials: "include" }).then(res => res.json()),
+      fetch(`${import.meta.env.VITE_API_URL}/api/receipts`, { credentials: "include" }).then(res => res.json()),
+      fetch(`${import.meta.env.VITE_API_URL}/api/articles`, { credentials: "include" }).then(res => res.json())
     ])
       .then(([userData, receipts, articles]) => {
         setUser(userData.user);

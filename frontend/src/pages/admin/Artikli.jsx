@@ -25,7 +25,7 @@ export default function Artikli() {
 
   const fetchArticles = async () => {
     try {
-      const response = await fetch("http://localhost:3000/api/articles", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/articles`, {
         credentials: "include",
       });
       const data = await response.json();
@@ -39,7 +39,7 @@ export default function Artikli() {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch("http://localhost:3000/api/categories", { credentials: "include" });
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/categories`, { credentials: "include" });
       const data = await response.json();
       if (Array.isArray(data)) setCategories(data);
     } catch (error) {
@@ -65,8 +65,8 @@ export default function Artikli() {
     e.preventDefault();
     try {
       const url = editingId
-        ? `http://localhost:3000/api/articles/${editingId}`
-        : "http://localhost:3000/api/articles";
+        ? `${import.meta.env.VITE_API_URL}/api/articles/${editingId}`
+        : `${import.meta.env.VITE_API_URL}/api/articles`;
       const method = editingId ? "PUT" : "POST";
 
       const response = await fetch(url, {
@@ -96,7 +96,7 @@ export default function Artikli() {
   const handleDelete = async (id) => {
     if (window.confirm("Sigurno želite obrisati ovaj artikl?")) {
       try {
-        const response = await fetch(`http://localhost:3000/api/articles/${id}`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/articles/${id}`, {
           method: "DELETE",
           credentials: "include",
         });
@@ -114,7 +114,7 @@ export default function Artikli() {
   const toggleActive = async (id, currentActive) => {
     try {
       const article = articles.find(a => a.id === id);
-      await fetch(`http://localhost:3000/api/articles/${id}`, {
+      await fetch(`${import.meta.env.VITE_API_URL}/api/articles/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

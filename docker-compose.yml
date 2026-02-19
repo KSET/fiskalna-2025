@@ -9,6 +9,8 @@ services:
       POSTGRES_DB: appdb
     ports:
       - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
   backend:
     build: ./backend
@@ -17,6 +19,8 @@ services:
     volumes:
       - ./backend:/app
       - /app/node_modules
+    env_file:
+      - ./backend/.env
     environment:
       DATABASE_URL: postgresql://app:app@db:5432/appdb
     depends_on:
@@ -32,4 +36,7 @@ services:
       - /app/node_modules
     depends_on:
       - backend
-    command: npm run dev
+    command: npm run dev -- --host
+
+volumes:
+  postgres_data:

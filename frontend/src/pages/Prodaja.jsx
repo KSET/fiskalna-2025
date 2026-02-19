@@ -92,7 +92,7 @@ if (res.ok) {
 
   const fetchArticles = async () => {
     try {
-      const response = await fetch("http://localhost:3000/api/articles", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/articles`, {
         credentials: "include",
       });
       const data = await response.json();
@@ -149,6 +149,18 @@ if (res.ok) {
     const receiptNumber = `RCN-${Date.now()}`;
     const paymentTypeMap = { "Gotovina": "GOTOVINA", "Kartica": "KARTICA" };
     const paymentTypeValue = paymentTypeMap[paymentMethod] || "GOTOVINA";
+    try {
+      // Calculate totals
+      const brutto = selectedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      const netto = 0; // Calculate based on tax rates
+      const taxValue = 0; // Calculate based on tax rates
+
+      // Validate payment type is uppercase
+      const paymentTypeMap = {
+        "Gotovina": "GOTOVINA",
+        "Kartica": "KARTICA",
+      };
+      const paymentTypeValue = paymentTypeMap[paymentMethod] || "GOTOVINA";
 
     const receiptData = {
       receiptNumber,

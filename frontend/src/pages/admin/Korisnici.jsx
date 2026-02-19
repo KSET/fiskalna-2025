@@ -15,7 +15,7 @@ export default function Korisnici() {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch("http://localhost:3000/api/users", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users`, {
         credentials: "include",
       });
       const data = await response.json();
@@ -37,7 +37,7 @@ export default function Korisnici() {
 
   const handleSave = async (userId) => {
     try {
-      await fetch(`http://localhost:3000/api/users/${userId}`, {
+      await fetch(`${import.meta.env.VITE_API_URL}/api/users/${userId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -54,7 +54,7 @@ export default function Korisnici() {
   const handleDelete = async (userId) => {
     if (window.confirm("Sigurno želite obrisati ovog korisnika?")) {
       try {
-        await fetch(`http://localhost:3000/api/users/${userId}`, {
+        await fetch(`${import.meta.env.VITE_API_URL}/api/users/${userId}`, {
           method: "DELETE",
           credentials: "include",
         });
@@ -72,7 +72,7 @@ export default function Korisnici() {
       return;
     }
     try {
-      await fetch("http://localhost:3000/api/users", {
+      await fetch(`${import.meta.env.VITE_API_URL}/api/users`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

@@ -12,7 +12,7 @@ export default function Povijest() {
 
   const fetchTransactions = async () => {
     try {
-      const response = await fetch("http://localhost:3000/api/transactions", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/transactions`, {
         credentials: "include",
       });
 
@@ -40,7 +40,7 @@ export default function Povijest() {
   const filteredTransactions = transactions.filter(t => {
     if (!filter) return true;
     return (
-      t.receipt?.receiptNumber?.toLowerCase().includes(filter.toLowerCase()) ||
+      t.receipt?.invoiceNumber?.toLowerCase().includes(filter.toLowerCase()) ||
       t.user?.name?.toLowerCase().includes(filter.toLowerCase())
     );
   });
@@ -119,7 +119,7 @@ export default function Povijest() {
                     {transaction.id.slice(0, 8)}...
                   </td>
                   <td style={{ padding: '12px', color: '#333' }}>
-                    {transaction.receipt?.receiptNumber || "N/A"}
+                    {transaction.receipt?.invoiceNumber || "N/A"}
                   </td>
                   <td style={{ padding: '12px', color: '#333', textAlign: 'right' }}>
                     <span className="currency">{transaction.amount.toFixed(2)}</span>
