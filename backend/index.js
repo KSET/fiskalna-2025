@@ -15,7 +15,7 @@ const PgSession = connectPgSimple(session);
 const pgPool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 
 const app = express();
-
+const round2 = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || origin.startsWith("http://localhost") || origin.startsWith("http://172.") || origin.startsWith("http://192.168.") || origin.startsWith("http://10.")) {
@@ -244,7 +244,7 @@ app.get("/api/receipts/:id/print", requireAuth, async (req, res) => {
       items: receipt.items.map(item => ({
         name: item.name || item.article?.name || "N/A",
         quantity: item.quantity,
-        price: item.price,
+        price: round2(item.price || 0),
       })),
       time: new Date(receipt.createdAt).toLocaleString("hr-HR"),
       cashier: receipt.user?.name || "N/A",
@@ -360,7 +360,7 @@ app.post("/api/receipts", requireAuth, async (req, res) => {
             description: item.description,
             lineItemId: item.lineItemId,
             quantity: item.quantity,
-            price: item.price,
+            price: round2(item.price || 0),
             taxRate: item.taxRate,
             unit: item.unit,
             articleId: item.articleId,
@@ -488,7 +488,7 @@ app.put("/api/receipts/:id/storno", requireAuth, async (req, res) => {
             description: item.description,
             lineItemId: item.lineItemId,
             quantity: item.quantity,
-            price: -item.price,
+            price: round2(-item.price || 0),
             taxRate: item.taxRate,
             unit: item.unit,
             articleId: item.articleId,
@@ -639,7 +639,7 @@ app.put("/api/receipts/:id", requireAuth, async (req, res) => {
             description: item.description,
             lineItemId: item.lineItemId,
             quantity: item.quantity,
-            price: item.price,
+            price: round2(item.price || 0),
             taxRate: item.taxRate,
             unit: item.unit,
             articleId: item.articleId,
