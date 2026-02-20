@@ -16,7 +16,7 @@ const pgPool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 
 const app = express();
 const round2 = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
-const ALLOWED_ORIGINS = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(",") : [];
+const ALLOWED_ORIGINS = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(",") : ["https://fiskalna.kset.org"];
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || origin.startsWith("http://localhost") || origin.startsWith("http://172.") || origin.startsWith("http://192.168.") || origin.startsWith("http://10.") || ALLOWED_ORIGINS.includes(origin)) {
