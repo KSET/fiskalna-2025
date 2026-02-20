@@ -78,7 +78,7 @@ Način plaćanja: ${order.payment}
 ${line}
 Porez  %   Osnovica     Iznos
 ${line}
-PDV    5   ${lpad(order.base.toFixed(2), 10)}   ${lpad(order.tax.toFixed(2), 7)}
+PDV    5   ${lpad(Number(order.base).toFixed(2), 10)}   ${lpad(Number(order.tax).toFixed(2), 7)}
 ${line}
 
 JIR: ${order.jir}
