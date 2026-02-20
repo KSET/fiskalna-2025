@@ -35,7 +35,7 @@ export default function Sidebar() {
     <div className="sidebar">
       <div className="sidebar-header">
         <h1>Fiskalna</h1>
-        {user && <p className="user-name">{user.name} v1.1</p>}
+        {user && <p className="user-name">{user.name} v1.2</p>}
       </div>
 
       <nav className="sidebar-nav">
