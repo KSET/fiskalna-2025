@@ -45,10 +45,10 @@ const IzvjestajReceipt = ({ data }) => {
   const firstMethodTotal = paymentTotals[firstMethod] || 0;
 
   const s = {
-    wrap: { fontFamily: "'Courier New', Courier, monospace", fontSize: "11px", width: "72mm", margin: "0 auto", color: "#000", background: "#fff", padding: "4mm 2mm" },
+    wrap: { fontFamily: "'Courier New', Courier, monospace", fontSize: "13px", width: "72mm", margin: "0 auto", color: "#000", background: "#fff", padding: "4mm 2mm", fontWeight: "bold" },
     center: { textAlign: "center" },
-    big: { fontSize: "15px", fontWeight: "bold" },
-    pre: { fontFamily: "inherit", fontSize: "inherit", margin: "0", whiteSpace: "pre", lineHeight: "1.35" },
+    big: { fontSize: "18px", fontWeight: "bold" },
+    pre: { fontFamily: "inherit", fontSize: "inherit", margin: "0", whiteSpace: "pre", lineHeight: "1.4", fontWeight: "bold" },
   };
 
   return (
