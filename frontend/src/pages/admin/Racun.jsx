@@ -4,7 +4,7 @@ import { QRCodeSVG } from "qrcode.react";
 const Receipt = ({ order }) => {
    if (!order || !order.items) return null;
 
-   const W = 42;
+   const W = 38;
    const line = "─".repeat(W);
 
    const center = (text) => {
@@ -32,7 +32,7 @@ const Receipt = ({ order }) => {
       return acc;
    }, {});
 
-   const COL_NAME = 20;
+   const COL_NAME = 17;
    const COL_QTY  = 4;
    const COL_PRC  = 7;
    const COL_TOT  = 7;
@@ -58,7 +58,7 @@ const Receipt = ({ order }) => {
    }).join("\n");
 
    const s = {
-      wrap:   { fontFamily: "'Courier New', Courier, monospace", fontSize: "12px", width: "76mm", margin: "0", color: "#000", background: "#fff", padding: "2mm 1mm", fontWeight: "bold" },
+      wrap:   { fontFamily: "'Courier New', Courier, monospace", fontSize: "13px", width: "80mm", margin: "0", color: "#000", background: "#fff", padding: "1mm 0 1mm 0", fontWeight: "bold" },
       center: { textAlign: "center" },
       big:    { fontSize: "18px", fontWeight: "bold" },
       pre:    { fontFamily: "inherit", fontSize: "inherit", margin: "0", whiteSpace: "pre", lineHeight: "1.4", fontWeight: "bold" },
@@ -126,8 +126,8 @@ const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj, autoPrint }) 
    const doPrint = () => {
       const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #fff; overflow: hidden; }
-        @media print { @page { margin: 0; size: 80mm auto; } body { width: 80mm; } }
+        body { background: #fff; margin: 0; padding: 0; }
+        @media print { @page { margin: 0; size: 80mm auto; } body { width: 80mm; overflow: hidden; } }
       </style></head><body>${receiptRef.current.innerHTML}</body></html>`;
 
       const w = window.open("", "_blank");

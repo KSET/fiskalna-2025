@@ -127,16 +127,18 @@ export default function Izvjestaj() {
 
   const articlesByPayment = {};
   const allArticles = {};
+
   const paymentCounts = {};
+  positiveReceipts.forEach(receipt => {
+    const method = receipt.paymentType;
+    paymentCounts[method] = (paymentCounts[method] || 0) + 1;
+  });
 
   dayReceipts.forEach(receipt => {
     const method = receipt.paymentType;
 
     if (!articlesByPayment[method]) {
       articlesByPayment[method] = {};
-    }
-    if (receipt.status !== 'STORNO') {
-      paymentCounts[method] = (paymentCounts[method] || 0) + 1;
     }
     if (receipt.items) {
       const sign = receipt.status === 'STORNO' ? -1 : 1;
