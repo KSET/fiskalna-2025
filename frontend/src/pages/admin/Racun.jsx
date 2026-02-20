@@ -58,10 +58,10 @@ const Receipt = ({ order }) => {
    }).join("\n");
 
    const s = {
-      wrap:   { fontFamily: "'Courier New', Courier, monospace", fontSize: "13px", width: "72mm", margin: "0 auto", color: "#000", background: "#fff", padding: "4mm 2mm", fontWeight: "bold" },
+      wrap:   { fontFamily: "'Courier New', Courier, monospace", fontSize: "16px", width: "72mm", margin: "0 auto", color: "#000", background: "#fff", padding: "4mm 2mm", fontWeight: "900" },
       center: { textAlign: "center" },
-      big:    { fontSize: "18px", fontWeight: "bold" },
-      pre:    { fontFamily: "inherit", fontSize: "inherit", margin: "0", whiteSpace: "pre", lineHeight: "1.4", fontWeight: "bold" },
+      big:    { fontSize: "22px", fontWeight: "900" },
+      pre:    { fontFamily: "inherit", fontSize: "inherit", margin: "0", whiteSpace: "pre", lineHeight: "1.45", fontWeight: "900" },
       qr:     { textAlign: "center", marginTop: "6px" },
    };
 
@@ -107,11 +107,11 @@ ${center("#fiskalizacija")}`}
 
          {order.qrCode ? (
             <div style={s.qr}>
-               <img src={`data:image/png;base64,${order.qrCode}`} width={110} height={110} alt="QR" />
+               <img src={`data:image/png;base64,${order.qrCode}`} width={200} height={200} alt="QR" />
             </div>
          ) : order.link ? (
             <div style={s.qr}>
-               <QRCodeSVG value={order.link} size={110} level="Q" bgColor="#FFFFFF" fgColor="#000000" />
+               <QRCodeSVG value={order.link} size={200} level="Q" bgColor="#FFFFFF" fgColor="#000000" />
             </div>
          ) : null}
       </div>
@@ -172,12 +172,12 @@ const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj, autoPrint }) 
 
    return (
       <div>
-         <div style={{ display: "none" }}>
+         <div style={{ position: "fixed", top: "-9999px", left: "-9999px", width: "80mm" }}>
             <div ref={receiptRef}>
                <Receipt order={printOrder ?? order} />
             </div>
          </div>
-         <iframe ref={iframeRef} style={{ display: "none" }} title="print-frame" />
+         <iframe ref={iframeRef} style={{ position: "fixed", top: "-9999px", left: "-9999px", width: "80mm", height: "297mm", border: "none" }} title="print-frame" />
 
       <button
         onClick={handleClick}
