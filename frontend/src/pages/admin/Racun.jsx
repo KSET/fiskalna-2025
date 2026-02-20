@@ -120,23 +120,23 @@ ${center("#fiskalizacija")}`}
 
 const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj, autoPrint }) => {
    const receiptRef = useRef();
-   const iframeRef = useRef();
    const [printOrder, setPrintOrder] = useState(null);
    const shouldPrintRef = useRef(false);
 
    const doPrint = () => {
-      const iframe = iframeRef.current;
-      const doc = iframe.contentDocument || iframe.contentWindow.document;
-      doc.open();
-      doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+      const popup = window.open("", "_blank", "width=400,height=600");
+      if (!popup) return;
+      popup.document.open();
+      popup.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #fff; }
         @media print { @page { margin: 0; size: 80mm auto; } }
       </style></head><body>${receiptRef.current.innerHTML}</body></html>`);
-      doc.close();
+      popup.document.close();
       setTimeout(() => {
-         iframe.contentWindow.focus();
-         iframe.contentWindow.print();
+         popup.focus();
+         popup.print();
+         popup.onafterprint = () => popup.close();
          if (onAfterPrint) setTimeout(onAfterPrint, 500);
       }, 300);
    };
@@ -177,7 +177,6 @@ const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj, autoPrint }) 
                <Receipt order={printOrder ?? order} />
             </div>
          </div>
-         <iframe ref={iframeRef} style={{ position: "fixed", top: "-9999px", left: "-9999px", width: "80mm", height: "297mm", border: "none" }} title="print-frame" />
 
       <button
         onClick={handleClick}
