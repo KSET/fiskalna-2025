@@ -128,7 +128,7 @@ const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj, autoPrint }) 
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #fff; }
         @media print { @page { margin: 0; size: 80mm auto; } }
-      </style></head><body>${receiptRef.current.innerHTML}<script>window.onload=function(){window.print();}</` + `script></body></html>`;
+      </style></head><body>${receiptRef.current.innerHTML}</body></html>`;
 
       const w = window.open("", "_blank");
       if (!w || w.closed || typeof w.document === "undefined") {
