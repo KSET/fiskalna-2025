@@ -267,7 +267,7 @@ export default function Artikli() {
                 <td>{article.name}</td>
                 <td>{article.productCode}</td>
                 <td>{article.kpdCode}</td>
-                <td><span className="currency">{article.price.toFixed(2)}</span></td>
+                <td><span className="currency">{parseFloat(article.price).toFixed(2)}</span></td>
                 <td>{article.taxRate}%</td>
                 <td>{categories.find(c => c.id === article.categoryId)?.name || "-"}</td>
                 <td>

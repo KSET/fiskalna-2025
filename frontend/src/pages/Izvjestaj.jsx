@@ -138,6 +138,8 @@ export default function Izvjestaj() {
       const sign = receipt.status === 'STORNO' ? -1 : 1;
       receipt.items.forEach(item => {
         const name = item.article?.name || "N/A";
+        const qty = sign * parseFloat(item.quantity);
+        const total = qty * Math.abs(parseFloat(item.price));
 
         if (!articlesByPayment[method][name]) {
           articlesByPayment[method][name] = {
@@ -146,8 +148,8 @@ export default function Izvjestaj() {
             total: 0
           };
         }
-        articlesByPayment[method][name].quantity += sign * item.quantity;
-        articlesByPayment[method][name].total += sign * item.quantity * item.price;
+        articlesByPayment[method][name].quantity += qty;
+        articlesByPayment[method][name].total += total;
 
         if (!allArticles[name]) {
           allArticles[name] = {
@@ -156,8 +158,8 @@ export default function Izvjestaj() {
             total: 0
           };
         }
-        allArticles[name].quantity += sign * item.quantity;
-        allArticles[name].total += sign * item.quantity * item.price;
+        allArticles[name].quantity += qty;
+        allArticles[name].total += total;
       });
     }
   });

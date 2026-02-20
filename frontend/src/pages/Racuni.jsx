@@ -131,7 +131,7 @@ export default function Racuni() {
                     {new Date(receipt.createdAt).toLocaleDateString("hr-HR")} {new Date(receipt.createdAt).toLocaleTimeString("hr-HR", {hour: '2-digit', minute: '2-digit'})}
                   </td>
                   <td>{receipt.paymentType}</td>
-                  <td><span className="currency">{receipt.brutto.toFixed(2)}</span></td>
+                  <td><span className="currency">{parseFloat(receipt.brutto).toFixed(2)}</span></td>
                   <td>{receipt.user?.name || "N/A"}</td>
                   <td>
                     {receipt.status === 'STORNO' && (

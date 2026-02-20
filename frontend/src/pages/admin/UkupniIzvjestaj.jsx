@@ -141,7 +141,7 @@ export default function UkupniIzvjestaj() {
             {reports.map(report => (
               <tr key={report.id}>
                 <td>{new Date(report.date).toLocaleDateString("hr-HR")}</td>
-                <td><span className="currency">{report.totalSalesAmount.toFixed(2)}</span></td>
+                <td style={{ color: parseFloat(report.totalSalesAmount) < 0 ? 'red' : 'inherit' }}><span className="currency">{parseFloat(report.totalSalesAmount).toFixed(2)}</span></td>
                 <td>{report.invoiceCount}</td>
                 <td>{report.description || "-"}</td>
               </tr>

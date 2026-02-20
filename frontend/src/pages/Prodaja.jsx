@@ -37,7 +37,7 @@ export default function Prodaja() {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/articles`, { credentials: "include" });
       const data = await response.json();
-      setArticles(response.ok && Array.isArray(data) ? data.filter(a => a.active) : []);
+      setArticles(response.ok && Array.isArray(data) ? data.filter(a => a.active).map(a => ({ ...a, price: parseFloat(a.price), taxRate: parseFloat(a.taxRate) })) : []);
     } catch {
       setArticles([]);
     } finally {

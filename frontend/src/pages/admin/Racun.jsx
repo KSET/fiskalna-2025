@@ -15,12 +15,12 @@ const Receipt = ({ order }) => {
    const lpad = (s, n) => s.length >= n ? s.slice(0, n) : " ".repeat(n - s.length) + s;
    const padLeft = (s, n) => lpad(String(s), n);
 
-   const total = order.items.reduce((acc, item) => acc + item.price * item.quantity, 0);
+   const total = order.items.reduce((acc, item) => acc + parseFloat(item.price) * parseFloat(item.quantity), 0);
 
    // RACUNANJE POREZNIH GRUPA
    const taxGroups = order.items.reduce((acc, item) => {
       const rate = Number(item.taxRate || 0);
-      const brutto = item.price * item.quantity;
+      const brutto = parseFloat(item.price) * parseFloat(item.quantity);
       const netto = brutto / (1 + rate / 100);
       const tax = brutto - netto;
 
@@ -40,8 +40,8 @@ const Receipt = ({ order }) => {
    const itemLines = order.items.map(item => {
       const name = item.name || "";
       const qty  = item.quantity.toString();
-      const prc  = item.price.toFixed(2);
-      const tot  = (item.price * item.quantity).toFixed(2);
+      const prc  = parseFloat(item.price).toFixed(2);
+      const tot  = (parseFloat(item.price) * parseFloat(item.quantity)).toFixed(2);
 
       const nameChunks = [];
       for (let i = 0; i < name.length; i += COL_NAME) {

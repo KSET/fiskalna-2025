@@ -29,7 +29,7 @@ export default function Home() {
         setStats({
           totalReceipts: receipts.filter(r => r.status === 'RACUN').length,
           todayReceipts: todayReceipts.length,
-          todayTotal: todayReceipts.reduce((sum, r) => sum + r.brutto, 0),
+          todayTotal: todayReceipts.reduce((sum, r) => sum + parseFloat(r.brutto), 0),
           activeArticles: articles.filter(a => a.active).length
         });
 
