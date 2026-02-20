@@ -78,11 +78,11 @@ const Receipt = ({ order }) => {
 
          <pre style={s.pre}>{
 `Telefon: ${order.phone || "0916043415"}
-E-mail:  ${order.email || "email od blagajnika ili stogod"}
+E-mail:  ${(order.email || "").slice(0, W - 9)}
 ${line}
-Račun br:         ${order.num}
-Vrijeme:          ${order.time}
-Blagajnik:        ${order.cashier}
+Račun br: ${order.num}
+Vrijeme:  ${order.time}
+Blagajnik:${order.cashier}
 ${line}
 ${rpad("Naziv", COL_NAME)} ${lpad("Kol.", COL_QTY)} ${lpad("Cij.", COL_PRC)} ${lpad("Iznos", COL_TOT)}
 ${line}
@@ -98,10 +98,10 @@ ${Object.entries(taxGroups).map(([rate, values]) => {
     return `PDV ${padLeft(rate + "%", 9)}  ${padLeft(values.base.toFixed(2), 8)}  ${padLeft(values.tax.toFixed(2), 7)}`;
 }).join("\n")}
 ${line}
-
-JIR: ${order.jir || "N/A"}
-ZKI: ${order.zki || "N/A"}
-
+JIR:
+${order.jir || "N/A"}
+ZKI:
+${order.zki || "N/A"}
 ${center("#fiskalizacija")}`}
          </pre>
 
