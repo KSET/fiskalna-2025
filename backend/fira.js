@@ -31,7 +31,7 @@ export async function handleOrderFiscalization(order) {
       if (!itemsGrouped[firaId]) {
         itemsGrouped[firaId] = { quantity: 0, price: 0, name: "" };
       }
-      itemsGrouped[firaId].quantity += 1;
+      itemsGrouped[firaId].quantity += parseFloat(position.quantity);
       if (itemsGrouped[firaId].price === 0) {
         itemsGrouped[firaId].price = parseFloat(position.price);
         itemsGrouped[firaId].name = position.name || position.article?.name || "";
