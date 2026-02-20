@@ -120,19 +120,23 @@ ${center("#fiskalizacija")}`}
 
 const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj, autoPrint }) => {
    const receiptRef = useRef();
+   const iframeRef = useRef();
    const [printOrder, setPrintOrder] = useState(null);
    const shouldPrintRef = useRef(false);
 
    const doPrint = () => {
-      const w = window.open("", "_blank");
-      w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+      const iframe = iframeRef.current;
+      const doc = iframe.contentDocument || iframe.contentWindow.document;
+      doc.open();
+      doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #fff; }
         @media print { @page { margin: 0; size: 80mm auto; } }
       </style></head><body>${receiptRef.current.innerHTML}</body></html>`);
-      w.document.close();
+      doc.close();
       setTimeout(() => {
-         w.print();
+         iframe.contentWindow.focus();
+         iframe.contentWindow.print();
          if (onAfterPrint) setTimeout(onAfterPrint, 500);
       }, 300);
    };
@@ -173,6 +177,7 @@ const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj, autoPrint }) 
                <Receipt order={printOrder ?? order} />
             </div>
          </div>
+         <iframe ref={iframeRef} style={{ display: "none" }} title="print-frame" />
 
       <button
         onClick={handleClick}
