@@ -15,7 +15,7 @@ const IzvjestajReceipt = ({ data }) => {
   const {
     startTime, endTime, positiveReceipts,
     minReceiptNum, maxReceiptNum,
-    allArticles, articlesByPayment, paymentTotals, grandTotal
+    allArticles, articlesByPayment, paymentTotals, paymentCounts, grandTotal
   } = data;
 
   const COL_NAME = 22;
@@ -33,10 +33,10 @@ const IzvjestajReceipt = ({ data }) => {
   }).join("\n");
 
   const paymentLines = Object.entries(articlesByPayment).map(([method, articles]) => {
-    const totalQty = Object.values(articles).reduce((sum, item) => sum + item.quantity, 0);
+    const count = paymentCounts[method] || 0;
     const totalSum = Object.values(articles).reduce((sum, item) => sum + item.total, 0);
     const methodLabel = rpad(method, COL_NAME);
-    return methodLabel + lpad(String(totalQty), COL_QTY) + " " + lpad(totalSum.toFixed(2) + " \u20ac", COL_TOT);
+    return methodLabel + lpad(String(count), COL_QTY) + " " + lpad(totalSum.toFixed(2) + " \u20ac", COL_TOT);
   }).join("\n");
 
   const fmtDate = (d) => d ? d.toLocaleDateString("hr-HR", { day: '2-digit', month: '2-digit', year: 'numeric' }) + " " + d.toLocaleTimeString("hr-HR", { hour: '2-digit', minute: '2-digit' }) : "N/A";
@@ -127,12 +127,16 @@ export default function Izvjestaj() {
 
   const articlesByPayment = {};
   const allArticles = {};
+  const paymentCounts = {};
 
   dayReceipts.forEach(receipt => {
     const method = receipt.paymentType;
 
     if (!articlesByPayment[method]) {
       articlesByPayment[method] = {};
+    }
+    if (receipt.status !== 'STORNO') {
+      paymentCounts[method] = (paymentCounts[method] || 0) + 1;
     }
     if (receipt.items) {
       const sign = receipt.status === 'STORNO' ? -1 : 1;
@@ -171,7 +175,7 @@ export default function Izvjestaj() {
 
   const grandTotal = Object.values(paymentTotals).reduce((sum, total) => sum + total, 0);
 
-  const reportData = { startTime, endTime, positiveReceipts, minReceiptNum, maxReceiptNum, allArticles, articlesByPayment, paymentTotals, grandTotal };
+  const reportData = { startTime, endTime, positiveReceipts, minReceiptNum, maxReceiptNum, allArticles, articlesByPayment, paymentTotals, paymentCounts, grandTotal };
 
   const handlePrint = () => {
     const w = window.open("", "_blank");
@@ -263,12 +267,11 @@ export default function Izvjestaj() {
         </thead>
         <tbody>
           {Object.entries(articlesByPayment).map(([method, articles]) => {
-            const totalQty = Object.values(articles).reduce((sum, item) => sum + item.quantity, 0);
             const totalSum = Object.values(articles).reduce((sum, item) => sum + item.total, 0);
             return (
               <tr key={method} style={{borderBottom: '1px solid #ddd'}}>
                 <td style={{padding: '8px 15px', color: '#333'}}>{method}</td>
-                <td style={{padding: '8px 15px', textAlign: 'center', color: '#333'}}>{totalQty}</td>
+                <td style={{padding: '8px 15px', textAlign: 'center', color: '#333'}}>{paymentCounts[method] || 0}</td>
                 <td style={{padding: '8px 15px', textAlign: 'right', color: '#333'}}><span className="currency">{Math.abs(totalSum).toFixed(2)}</span></td>
               </tr>
             );

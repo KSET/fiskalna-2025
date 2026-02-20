@@ -58,7 +58,7 @@ const Receipt = ({ order }) => {
    }).join("\n");
 
    const s = {
-      wrap:   { fontFamily: "'Courier New', Courier, monospace", fontSize: "13px", width: "72mm", margin: "0 0 0 4mm", color: "#000", background: "#fff", padding: "4mm 2mm", fontWeight: "bold" },
+      wrap:   { fontFamily: "'Courier New', Courier, monospace", fontSize: "12px", width: "76mm", margin: "0", color: "#000", background: "#fff", padding: "2mm 1mm", fontWeight: "bold" },
       center: { textAlign: "center" },
       big:    { fontSize: "18px", fontWeight: "bold" },
       pre:    { fontFamily: "inherit", fontSize: "inherit", margin: "0", whiteSpace: "pre", lineHeight: "1.4", fontWeight: "bold" },
@@ -126,8 +126,8 @@ const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj, autoPrint }) 
    const doPrint = () => {
       const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #fff; }
-        @media print { @page { margin: 0; size: 80mm auto; } }
+        body { background: #fff; overflow: hidden; }
+        @media print { @page { margin: 0; size: 80mm auto; } body { width: 80mm; } }
       </style></head><body>${receiptRef.current.innerHTML}</body></html>`;
 
       const w = window.open("", "_blank");
