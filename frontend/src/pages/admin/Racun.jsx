@@ -6,7 +6,7 @@ const Receipt = ({ order }) => {
 
    const W = 42;
    const line = "─".repeat(W);
-   
+
    const center = (text) => {
       const pad = Math.max(0, Math.floor((W - text.length) / 2));
       return " ".repeat(pad) + text;
@@ -58,10 +58,10 @@ const Receipt = ({ order }) => {
    }).join("\n");
 
    const s = {
-      wrap:   { fontFamily: "'Courier New', Courier, monospace", fontSize: "16px", width: "72mm", margin: "0 auto", color: "#000", background: "#fff", padding: "4mm 2mm", fontWeight: "900" },
+      wrap:   { fontFamily: "'Courier New', Courier, monospace", fontSize: "13px", width: "72mm", margin: "0 auto", color: "#000", background: "#fff", padding: "4mm 2mm", fontWeight: "bold" },
       center: { textAlign: "center" },
-      big:    { fontSize: "22px", fontWeight: "900" },
-      pre:    { fontFamily: "inherit", fontSize: "inherit", margin: "0", whiteSpace: "pre", lineHeight: "1.45", fontWeight: "900" },
+      big:    { fontSize: "18px", fontWeight: "bold" },
+      pre:    { fontFamily: "inherit", fontSize: "inherit", margin: "0", whiteSpace: "pre", lineHeight: "1.4", fontWeight: "bold" },
       qr:     { textAlign: "center", marginTop: "6px" },
    };
 
@@ -107,11 +107,11 @@ ${center("#fiskalizacija")}`}
 
          {order.qrCode ? (
             <div style={s.qr}>
-               <img src={`data:image/png;base64,${order.qrCode}`} width={200} height={200} alt="QR" />
+               <img src={`data:image/png;base64,${order.qrCode}`} width={110} height={110} alt="QR" />
             </div>
          ) : order.link ? (
             <div style={s.qr}>
-               <QRCodeSVG value={order.link} size={200} level="Q" bgColor="#FFFFFF" fgColor="#000000" />
+               <QRCodeSVG value={order.link} size={110} level="Q" bgColor="#FFFFFF" fgColor="#000000" />
             </div>
          ) : null}
       </div>
@@ -120,23 +120,23 @@ ${center("#fiskalizacija")}`}
 
 const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj, autoPrint }) => {
    const receiptRef = useRef();
+   const iframeRef = useRef();
    const [printOrder, setPrintOrder] = useState(null);
    const shouldPrintRef = useRef(false);
 
    const doPrint = () => {
-      const popup = window.open("", "_blank", "width=400,height=600");
-      if (!popup) return;
-      popup.document.open();
-      popup.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+      const iframe = iframeRef.current;
+      const doc = iframe.contentDocument || iframe.contentWindow.document;
+      doc.open();
+      doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #fff; }
         @media print { @page { margin: 0; size: 80mm auto; } }
       </style></head><body>${receiptRef.current.innerHTML}</body></html>`);
-      popup.document.close();
+      doc.close();
       setTimeout(() => {
-         popup.focus();
-         popup.print();
-         popup.onafterprint = () => popup.close();
+         iframe.contentWindow.focus();
+         iframe.contentWindow.print();
          if (onAfterPrint) setTimeout(onAfterPrint, 500);
       }, 300);
    };
@@ -172,11 +172,12 @@ const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj, autoPrint }) 
 
    return (
       <div>
-         <div style={{ position: "fixed", top: "-9999px", left: "-9999px", width: "80mm" }}>
+         <div style={{ display: "none" }}>
             <div ref={receiptRef}>
                <Receipt order={printOrder ?? order} />
             </div>
          </div>
+         <iframe ref={iframeRef} style={{ display: "none" }} title="print-frame" />
 
       <button
         onClick={handleClick}
