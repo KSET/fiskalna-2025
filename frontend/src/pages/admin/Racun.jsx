@@ -124,12 +124,27 @@ const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj, autoPrint }) 
    const shouldPrintRef = useRef(false);
 
    const doPrint = () => {
-      const w = window.open("", "_blank");
-      w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #fff; }
         @media print { @page { margin: 0; size: 80mm auto; } }
-      </style></head><body>${receiptRef.current.innerHTML}</body></html>`);
+      </style></head><body>${receiptRef.current.innerHTML}<script>window.onload=function(){window.print();}</` + `script></body></html>`;
+
+      const w = window.open("", "_blank");
+      if (!w || w.closed || typeof w.document === "undefined") {
+         // Popup blocked — fallback to blob URL
+         const blob = new Blob([html], { type: "text/html" });
+         const url = URL.createObjectURL(blob);
+         const a = document.createElement("a");
+         a.href = url;
+         a.target = "_blank";
+         a.click();
+         setTimeout(() => URL.revokeObjectURL(url), 10000);
+         if (onAfterPrint) setTimeout(onAfterPrint, 500);
+         return;
+      }
+
+      w.document.write(html);
       w.document.close();
       setTimeout(() => {
          w.print();

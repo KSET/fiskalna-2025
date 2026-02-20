@@ -244,8 +244,9 @@ app.get("/api/receipts/:id/print", requireAuth, async (req, res) => {
       payment: receipt.paymentType,
       items: receipt.items.map(item => ({
         name: item.name || item.article?.name || "N/A",
-        quantity: item.quantity,
-        price: round2(item.price || 0),
+        quantity: parseFloat(item.quantity),
+        price: parseFloat(item.price),
+        taxRate: parseFloat(item.taxRate || 0),
       })),
       time: new Date(receipt.createdAt).toLocaleString("hr-HR"),
       cashier: receipt.user?.name || "N/A",
