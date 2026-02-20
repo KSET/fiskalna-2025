@@ -1,31 +1,47 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 
-
 const Receipt = ({ order }) => {
-   if (!order.items) return null;
+   if (!order || !order.items) return null;
 
    const W = 42;
    const line = "─".repeat(W);
+
    const center = (text) => {
       const pad = Math.max(0, Math.floor((W - text.length) / 2));
       return " ".repeat(pad) + text;
    };
-   const total = order.items.reduce((acc, item) => acc + item.price * item.quantity, 0);
+   const rpad = (s, n) => s.length >= n ? s.slice(0, n) : s + " ".repeat(n - s.length);
+   const lpad = (s, n) => s.length >= n ? s.slice(0, n) : " ".repeat(n - s.length) + s;
+   const padLeft = (s, n) => lpad(String(s), n);
+
+   const total = order.items.reduce((acc, item) => acc + parseFloat(item.price) * parseFloat(item.quantity), 0);
+
+   // RACUNANJE POREZNIH GRUPA
+   const taxGroups = order.items.reduce((acc, item) => {
+      const rate = Number(item.taxRate || 0);
+      const brutto = parseFloat(item.price) * parseFloat(item.quantity);
+      const netto = brutto / (1 + rate / 100);
+      const tax = brutto - netto;
+
+      if (!acc[rate]) {
+         acc[rate] = { base: 0, tax: 0 };
+      }
+      acc[rate].base += netto;
+      acc[rate].tax += tax;
+      return acc;
+   }, {});
 
    const COL_NAME = 20;
    const COL_QTY  = 4;
    const COL_PRC  = 7;
    const COL_TOT  = 7;
 
-   const rpad = (s, n) => s.length >= n ? s.slice(0, n) : s + " ".repeat(n - s.length);
-   const lpad = (s, n) => s.length >= n ? s.slice(0, n) : " ".repeat(n - s.length) + s;
-
    const itemLines = order.items.map(item => {
       const name = item.name || "";
       const qty  = item.quantity.toString();
-      const prc  = item.price.toFixed(2);
-      const tot  = (item.price * item.quantity).toFixed(2);
+      const prc  = parseFloat(item.price).toFixed(2);
+      const tot  = (parseFloat(item.price) * parseFloat(item.quantity)).toFixed(2);
 
       const nameChunks = [];
       for (let i = 0; i < name.length; i += COL_NAME) {
@@ -42,10 +58,10 @@ const Receipt = ({ order }) => {
    }).join("\n");
 
    const s = {
-      wrap:   { fontFamily: "'Courier New', Courier, monospace", fontSize: "11px", width: "72mm", margin: "0 auto", color: "#000", background: "#fff", padding: "4mm 2mm" },
+      wrap:   { fontFamily: "'Courier New', Courier, monospace", fontSize: "13px", width: "72mm", margin: "0 auto", color: "#000", background: "#fff", padding: "4mm 2mm", fontWeight: "bold" },
       center: { textAlign: "center" },
-      big:    { fontSize: "15px", fontWeight: "bold" },
-      pre:    { fontFamily: "inherit", fontSize: "inherit", margin: "0", whiteSpace: "pre", lineHeight: "1.35" },
+      big:    { fontSize: "18px", fontWeight: "bold" },
+      pre:    { fontFamily: "inherit", fontSize: "inherit", margin: "0", whiteSpace: "pre", lineHeight: "1.4", fontWeight: "bold" },
       qr:     { textAlign: "center", marginTop: "6px" },
    };
 
@@ -61,8 +77,8 @@ const Receipt = ({ order }) => {
          <pre style={s.pre}>{line}</pre>
 
          <pre style={s.pre}>{
-`Telefon: ${order.phone}
-E-mail:  ${order.email}
+`Telefon: ${order.phone || "0916043415"}
+E-mail:  ${order.email || "email od blagajnika ili stogod"}
 ${line}
 Račun br:         ${order.num}
 Vrijeme:          ${order.time}
@@ -78,16 +94,22 @@ Način plaćanja: ${order.payment}
 ${line}
 Porez  %   Osnovica     Iznos
 ${line}
-PDV    5   ${lpad(Number(order.base).toFixed(2), 10)}   ${lpad(Number(order.tax).toFixed(2), 7)}
+${Object.entries(taxGroups).map(([rate, values]) => {
+    return `PDV ${padLeft(rate + "%", 9)}  ${padLeft(values.base.toFixed(2), 8)}  ${padLeft(values.tax.toFixed(2), 7)}`;
+}).join("\n")}
 ${line}
 
-JIR: ${order.jir}
-ZKI: ${order.zki}
+JIR: ${order.jir || "N/A"}
+ZKI: ${order.zki || "N/A"}
 
 ${center("#fiskalizacija")}`}
          </pre>
 
-         {order.link ? (
+         {order.qrCode ? (
+            <div style={s.qr}>
+               <img src={`data:image/png;base64,${order.qrCode}`} width={110} height={110} alt="QR" />
+            </div>
+         ) : order.link ? (
             <div style={s.qr}>
                <QRCodeSVG value={order.link} size={110} level="Q" bgColor="#FFFFFF" fgColor="#000000" />
             </div>
@@ -96,10 +118,10 @@ ${center("#fiskalizacija")}`}
    );
 };
 
-
 const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj, autoPrint }) => {
    const receiptRef = useRef();
-   const printOrderRef = useRef(null);
+   const [printOrder, setPrintOrder] = useState(null);
+   const shouldPrintRef = useRef(false);
 
    const doPrint = () => {
       const w = window.open("", "_blank");
@@ -116,47 +138,51 @@ const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj, autoPrint }) 
    };
 
    const printaj = (updatedOrder) => {
-      if (updatedOrder) {
-        printOrderRef.current = updatedOrder;
-        // Force re-render so receiptRef gets updated HTML, then print
-        setTimeout(doPrint, 50);
-      } else {
-        doPrint();
-      }
+      shouldPrintRef.current = true;
+      setPrintOrder(updatedOrder ?? order);
    };
 
    useEffect(() => {
       if (autoPrint && order) {
-         printOrderRef.current = order;
-         setTimeout(doPrint, 50);
+         shouldPrintRef.current = true;
+         setTimeout(() => setPrintOrder(order), 0);
       }
    // eslint-disable-next-line react-hooks/exhaustive-deps
    }, []);
 
-   const handleClick = () => {
-      if (onFiskaliziraj) {
-         onFiskaliziraj(printaj);
-      } else {
-         printaj();
+   useEffect(() => {
+      if (shouldPrintRef.current && printOrder) {
+         shouldPrintRef.current = false;
+         setTimeout(doPrint, 50);
       }
-   };
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [printOrder]);
+
+  const handleClick = () => {
+    if (onFiskaliziraj) {
+      onFiskaliziraj(printaj);
+    } else {
+      printaj();
+    }
+  };
 
    return (
       <div>
          <div style={{ display: "none" }}>
             <div ref={receiptRef}>
-               <Receipt order={printOrderRef.current ?? order} />
+               <Receipt order={printOrder ?? order} />
             </div>
          </div>
 
-         <button
-            onClick={handleClick}
-            className={onFiskaliziraj ? "btn-success" : ""}
-         >
-            {onFiskaliziraj ? "Fiskaliziraj" : "Ispiši"}
-         </button>
-      </div>
-   );
+      <button
+        onClick={handleClick}
+        className={onFiskaliziraj ? "btn-success" : "btn-primary"}
+        style={{ width: '100%', padding: '10px', marginTop: '10px' }}
+      >
+        {onFiskaliziraj ? "Fiskaliziraj i Ispiši" : "Ispiši Račun"}
+      </button>
+    </div>
+  );
 };
 
 export default ReceiptPrintButton;
