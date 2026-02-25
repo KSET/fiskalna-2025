@@ -127,9 +127,8 @@ export default function UkupniIzvjestaj() {
     }
   };
 
-  // --- TVOJA ORIGINALNA LOGIKA OBRADE PODATAKA ---
   const dayReceipts = [...receipts].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-const positiveReceipts = dayReceipts.filter(r => r.status !== 'STORNO' && r.status !== 'RACUN_STORNIRAN');  
+  const positiveReceipts = dayReceipts.filter(r => r.status !== 'STORNO' && r.status !== 'RACUN_STORNIRAN');  
   const startTime = positiveReceipts.length > 0 ? new Date(positiveReceipts[0].createdAt) : null;
   const endTime = positiveReceipts.length > 0 ? new Date(positiveReceipts[positiveReceipts.length - 1].createdAt) : null;
   const invoiceNumbers = positiveReceipts.map(r => r.invoiceNumber);
@@ -260,15 +259,13 @@ const positiveReceipts = dayReceipts.filter(r => r.status !== 'STORNO' && r.stat
             cursor: pointer;
           }
 
-          /* DANAS - ŽUTO */
           .highlight-today {
-            background: #fff9c4 !important; /* Svijetlo žuta */
+            background: #fff9c4 !important;
             color: #333 !important;
             border: 2px solid #fbc02d !important;
             border-radius: 8px !important;
           }
 
-          /* PROMET - NARANČASTO */
           .highlight-orange { 
             background: #FF8C04 !important; 
             color: white !important; 
@@ -276,7 +273,6 @@ const positiveReceipts = dayReceipts.filter(r => r.status !== 'STORNO' && r.stat
             font-weight: bold;
           }
           
-          /* Ako je dan i Danas i ima Promet, narančasta ima prednost za pozadinu, ali ostavljamo border */
           .highlight-orange.highlight-today {
             border: 2px solid #333 !important;
           }
@@ -349,12 +345,32 @@ const positiveReceipts = dayReceipts.filter(r => r.status !== 'STORNO' && r.stat
         </tbody>
       </table>
 
+      {/* REKAPITULACIJA PO PLAĆANJU - Koristi isti stil kao tablica iznad */}
+      <table style={{width: '100%', borderCollapse: 'collapse', marginBottom: '10px', background: 'white'}}>
+        <thead>
+          <tr style={{background: '#ddd'}}>
+            <th style={{padding: '8px 15px', textAlign: 'left'}}>Način plaćanja</th>
+            <th style={{padding: '8px 15px', textAlign: 'center'}}>Br. računa</th>
+            <th style={{padding: '8px 15px', textAlign: 'right'}}>Suma</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(paymentTotals).map(([method, total]) => (
+            <tr key={method} style={{borderBottom: '1px solid #ddd'}}>
+              <td style={{padding: '8px 15px'}}>{method}</td>
+              <td style={{padding: '8px 15px', textAlign: 'center'}}>{paymentCounts[method] || 0}</td>
+              <td style={{padding: '8px 15px', textAlign: 'right'}}>{total.toFixed(2)} €</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
       <div style={{background: '#ddd', padding: '10px 15px', marginBottom: '10px', textAlign: 'right', fontWeight: '600'}}>
         UKUPNO: {grandTotal.toFixed(2)} €
       </div>
 
       <div style={{background: '#FF8C04', padding: '10px 15px', marginBottom: '10px', textAlign: 'right', fontWeight: '600', color: 'white'}}>
-        {Object.keys(articlesByPayment)[0]} + Polog: {(Math.abs(Object.values(paymentTotals)[0] || 0) + 130).toFixed(2)} €
+        {Object.keys(paymentTotals)[0] || "Plaćanje"} + Polog: {(Math.abs(Object.values(paymentTotals)[0] || 0) + 130).toFixed(2)} €
       </div>
 
       <div style={{background: '#FF8C04', padding: '10px 15px', marginBottom: '20px', textAlign: 'right', fontWeight: '600', color: 'white', fontSize: '16px'}}>
