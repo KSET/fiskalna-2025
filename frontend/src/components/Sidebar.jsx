@@ -97,6 +97,12 @@ export default function Sidebar() {
               Kategorije
             </Link>
             <Link
+              to="/admin/prodajna-mjesta"
+              className={`nav-link ${isActive("/admin/prodajna-mjesta") ? "active" : ""}`}
+            >
+              Prodajna mjesta
+            </Link>
+            <Link
               to="/admin/povijest"
               className={`nav-link ${
                 isActive("/admin/povijest") ? "active" : ""

@@ -12,6 +12,7 @@ import Artikli from "./pages/admin/Artikli";
 import Povijest from "./pages/admin/povijest";
 import Korisnici from "./pages/admin/Korisnici";
 import Kategorije from "./pages/admin/Kategorije";
+import ProdajnaMjesta from "./pages/admin/ProdajnaMjesta";
 export default function App() {
   return (
     <BrowserRouter>
@@ -118,6 +119,18 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/admin/prodajna-mjesta"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <ProdajnaMjesta />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        
       </Routes>
     </BrowserRouter>
   );

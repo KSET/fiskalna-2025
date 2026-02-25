@@ -2,82 +2,115 @@ import { useRef, useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 
 const Receipt = ({ order }) => {
-   if (!order || !order.items) return null;
+  if (!order || !order.items) return null;
 
-   const W = 38;
-   const line = "─".repeat(W);
+  const W = 38;
+  const line = "─".repeat(W);
 
-   const center = (text) => {
-      const pad = Math.max(0, Math.floor((W - text.length) / 2));
-      return " ".repeat(pad) + text;
-   };
-   const rpad = (s, n) => s.length >= n ? s.slice(0, n) : s + " ".repeat(n - s.length);
-   const lpad = (s, n) => s.length >= n ? s.slice(0, n) : " ".repeat(n - s.length) + s;
-   const padLeft = (s, n) => lpad(String(s), n);
+  const center = (text) => {
+    const pad = Math.max(0, Math.floor((W - text.length) / 2));
+    return " ".repeat(pad) + text;
+  };
+  const rpad = (s, n) => (s.length >= n ? s.slice(0, n) : s + " ".repeat(n - s.length));
+  const lpad = (s, n) => (s.length >= n ? s.slice(0, n) : " ".repeat(n - s.length) + s);
+  const padLeft = (s, n) => lpad(String(s), n);
 
-   const total = order.items.reduce((acc, item) => acc + parseFloat(item.price) * parseFloat(item.quantity), 0);
+  const total = order.items.reduce(
+    (acc, item) => acc + parseFloat(item.price) * parseFloat(item.quantity),
+    0
+  );
 
-   // RACUNANJE POREZNIH GRUPA
-   const taxGroups = order.items.reduce((acc, item) => {
-      const rate = Number(item.taxRate || 0);
-      const brutto = parseFloat(item.price) * parseFloat(item.quantity);
-      const netto = brutto / (1 + rate / 100);
-      const tax = brutto - netto;
+  // RACUNANJE POREZNIH GRUPA
+  const taxGroups = order.items.reduce((acc, item) => {
+    const rate = Number(item.taxRate || 0);
+    const brutto = parseFloat(item.price) * parseFloat(item.quantity);
+    const netto = brutto / (1 + rate / 100);
+    const tax = brutto - netto;
 
-      if (!acc[rate]) {
-         acc[rate] = { base: 0, tax: 0 };
-      }
-      acc[rate].base += netto;
-      acc[rate].tax += tax;
-      return acc;
-   }, {});
+    if (!acc[rate]) {
+      acc[rate] = { base: 0, tax: 0 };
+    }
+    acc[rate].base += netto;
+    acc[rate].tax += tax;
+    return acc;
+  }, {});
 
-   const COL_NAME = 17;
-   const COL_QTY  = 4;
-   const COL_PRC  = 7;
-   const COL_TOT  = 7;
+  const COL_NAME = 17;
+  const COL_QTY = 4;
+  const COL_PRC = 7;
+  const COL_TOT = 7;
 
-   const itemLines = order.items.map(item => {
+  const itemLines = order.items
+    .map((item) => {
       const name = item.name || "";
-      const qty  = item.quantity.toString();
-      const prc  = parseFloat(item.price).toFixed(2);
-      const tot  = (parseFloat(item.price) * parseFloat(item.quantity)).toFixed(2);
+      const qty = item.quantity.toString();
+      const prc = parseFloat(item.price).toFixed(2);
+      const tot = (parseFloat(item.price) * parseFloat(item.quantity)).toFixed(2);
 
       const nameChunks = [];
       for (let i = 0; i < name.length; i += COL_NAME) {
-         nameChunks.push(name.slice(i, i + COL_NAME));
+        nameChunks.push(name.slice(i, i + COL_NAME));
       }
       if (nameChunks.length === 0) nameChunks.push("");
 
-      return nameChunks.map((chunk, i) => {
-         if (i < nameChunks.length - 1) {
-            return rpad(chunk, COL_NAME) + " " + " ".repeat(COL_QTY) + " " + " ".repeat(COL_PRC) + " " + " ".repeat(COL_TOT);
-         }
-         return rpad(chunk, COL_NAME) + " " + lpad(qty, COL_QTY) + " " + lpad(prc, COL_PRC) + " " + lpad(tot, COL_TOT);
-      }).join("\n");
-   }).join("\n");
+      return nameChunks
+        .map((chunk, i) => {
+          if (i < nameChunks.length - 1) {
+            return (
+              rpad(chunk, COL_NAME) +
+              " " +
+              " ".repeat(COL_QTY) +
+              " " +
+              " ".repeat(COL_PRC) +
+              " " +
+              " ".repeat(COL_TOT)
+            );
+          }
+          return (
+            rpad(chunk, COL_NAME) + " " + lpad(qty, COL_QTY) + " " + lpad(prc, COL_PRC) + " " + lpad(tot, COL_TOT)
+          );
+        })
+        .join("\n");
+    })
+    .join("\n");
 
-   const s = {
-      wrap:   { fontFamily: "'Courier New', Courier, monospace", fontSize: "13px", width: "80mm", margin: "0", color: "#000", background: "#fff", padding: "1mm 0 1mm 0", fontWeight: "bold" },
-      center: { textAlign: "center" },
-      big:    { fontSize: "18px", fontWeight: "bold" },
-      pre:    { fontFamily: "inherit", fontSize: "inherit", margin: "0", whiteSpace: "pre", lineHeight: "1.4", fontWeight: "bold" },
-      qr:     { textAlign: "center", marginTop: "6px" },
-   };
+  const s = {
+    wrap: {
+      fontFamily: "'Courier New', Courier, monospace",
+      fontSize: "13px",
+      width: "80mm",
+      margin: "0",
+      color: "#000",
+      background: "#fff",
+      padding: "1mm 0 1mm 0",
+      fontWeight: "bold",
+    },
+    center: { textAlign: "center" },
+    big: { fontSize: "18px", fontWeight: "bold" },
+    pre: {
+      fontFamily: "inherit",
+      fontSize: "inherit",
+      margin: "0",
+      whiteSpace: "pre",
+      lineHeight: "1.4",
+      fontWeight: "bold",
+    },
+    qr: { textAlign: "center", marginTop: "6px" },
+  };
 
-   return (
-      <div style={s.wrap}>
-         <div style={{ ...s.center, marginBottom: "4px" }}>
-            <div style={s.big}>SS FER</div>
-            <div>Unska 3, 10000 Zagreb, Hrvatska</div>
-            <div>blagajnik@kset.org</div>
-            <div>OIB: 14504100762</div>
-         </div>
+  return (
+    <div style={s.wrap}>
+      <div style={{ ...s.center, marginBottom: "4px" }}>
+        <div style={s.big}>SS FER</div>
+        <div>Unska 3, 10000 Zagreb, Hrvatska</div>
+        <div>blagajnik@kset.org</div>
+        <div>OIB: 14504100762</div>
+      </div>
 
-         <pre style={s.pre}>{line}</pre>
+      <pre style={s.pre}>{line}</pre>
 
-         <pre style={s.pre}>{
-`Telefon: ${order.phone || "0916043415"}
+      <pre style={s.pre}>
+        {`Telefon: ${order.phone || "0916043415"}
 E-mail:  ${(order.email || "").slice(0, W - 9)}
 ${line}
 Račun br: ${order.num}
@@ -92,86 +125,106 @@ ${rpad("UKUPNO", W - COL_TOT - 1)}${lpad(total.toFixed(2) + " \u20ac", COL_TOT +
 ${line}
 Način plaćanja: ${order.payment}
 ${line}
-Porez  %   Osnovica     Iznos
+Porez   %   Osnovica     Iznos
 ${line}
-${Object.entries(taxGroups).map(([rate, values]) => {
-    return `PDV ${padLeft(rate + "%", 9)}  ${padLeft(values.base.toFixed(2), 8)}  ${padLeft(values.tax.toFixed(2), 7)}`;
-}).join("\n")}
+${Object.entries(taxGroups)
+  .map(([rate, values]) => {
+    return `PDV ${padLeft(rate + "%", 9)}  ${padLeft(values.base.toFixed(2), 8)}  ${padLeft(
+      values.tax.toFixed(2),
+      7
+    )}`;
+  })
+  .join("\n")}
 ${line}
 JIR:
 ${order.jir || "N/A"}
 ZKI:
 ${order.zki || "N/A"}
 ${center("#fiskalizacija")}`}
-         </pre>
+      </pre>
 
-         {order.qrCode ? (
-            <div style={s.qr}>
-               <img src={`data:image/png;base64,${order.qrCode}`} width={110} height={110} alt="QR" />
-            </div>
-         ) : order.link ? (
-            <div style={s.qr}>
-               <QRCodeSVG value={order.link} size={110} level="Q" bgColor="#FFFFFF" fgColor="#000000" />
-            </div>
-         ) : null}
-      </div>
-   );
+      {order.qrCode ? (
+        <div style={s.qr}>
+          <img src={`data:image/png;base64,${order.qrCode}`} width={110} height={110} alt="QR" />
+        </div>
+      ) : order.link ? (
+        <div style={s.qr}>
+          <QRCodeSVG value={order.link} size={110} level="Q" bgColor="#FFFFFF" fgColor="#000000" />
+        </div>
+      ) : null}
+    </div>
+  );
 };
 
 const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj, autoPrint }) => {
-   const receiptRef = useRef();
-   const [printOrder, setPrintOrder] = useState(null);
-   const shouldPrintRef = useRef(false);
+  const receiptRef = useRef();
+  const [printOrder, setPrintOrder] = useState(null);
+  const shouldPrintRef = useRef(false);
 
-   const doPrint = () => {
-      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #fff; margin: 0; padding: 0; }
-        @media print { @page { margin: 0; size: 80mm auto; } body { width: 80mm; overflow: hidden; } }
-      </style></head><body>${receiptRef.current.innerHTML}</body></html>`;
+  const doPrint = () => {
+    let printFrame = document.getElementById("receipt-print-frame");
+    if (!printFrame) {
+      printFrame = document.createElement("iframe");
+      printFrame.id = "receipt-print-frame";
+      printFrame.style.position = "fixed";
+      printFrame.style.bottom = "0";
+      printFrame.style.right = "0";
+      printFrame.style.width = "0";
+      printFrame.style.height = "0";
+      printFrame.style.border = "none";
+      document.body.appendChild(printFrame);
+    }
 
-      const w = window.open("", "_blank");
-      if (!w || w.closed || typeof w.document === "undefined") {
-         // Popup blocked — fallback to blob URL
-         const blob = new Blob([html], { type: "text/html" });
-         const url = URL.createObjectURL(blob);
-         const a = document.createElement("a");
-         a.href = url;
-         a.target = "_blank";
-         a.click();
-         setTimeout(() => URL.revokeObjectURL(url), 10000);
-         if (onAfterPrint) setTimeout(onAfterPrint, 500);
-         return;
-      }
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { background: #fff; margin: 0; padding: 0; }
+            @media print { 
+              @page { margin: 0; size: 80mm auto; } 
+              body { width: 80mm; } 
+            }
+          </style>
+        </head>
+        <body>
+          ${receiptRef.current.innerHTML}
+        </body>
+      </html>
+    `;
 
-      w.document.write(html);
-      w.document.close();
-      setTimeout(() => {
-         w.print();
-         if (onAfterPrint) setTimeout(onAfterPrint, 500);
-      }, 300);
-   };
+    const doc = printFrame.contentWindow.document;
+    doc.open();
+    doc.write(html);
+    doc.close();
 
-   const printaj = (updatedOrder) => {
+    printFrame.contentWindow.focus();
+    setTimeout(() => {
+      printFrame.contentWindow.print();
+      if (onAfterPrint) setTimeout(onAfterPrint, 500);
+    }, 500);
+  };
+
+  const printaj = (updatedOrder) => {
+    shouldPrintRef.current = true;
+    setPrintOrder(updatedOrder ?? order);
+  };
+
+  useEffect(() => {
+    if (autoPrint && order) {
       shouldPrintRef.current = true;
-      setPrintOrder(updatedOrder ?? order);
-   };
+      setTimeout(() => setPrintOrder(order), 0);
+    }
+  }, [autoPrint, order]);
 
-   useEffect(() => {
-      if (autoPrint && order) {
-         shouldPrintRef.current = true;
-         setTimeout(() => setPrintOrder(order), 0);
-      }
-   // eslint-disable-next-line react-hooks/exhaustive-deps
-   }, []);
-
-   useEffect(() => {
-      if (shouldPrintRef.current && printOrder) {
-         shouldPrintRef.current = false;
-         setTimeout(doPrint, 50);
-      }
-   // eslint-disable-next-line react-hooks/exhaustive-deps
-   }, [printOrder]);
+  useEffect(() => {
+    if (shouldPrintRef.current && printOrder) {
+      shouldPrintRef.current = false;
+      setTimeout(doPrint, 50);
+    }
+  }, [printOrder]);
 
   const handleClick = () => {
     if (onFiskaliziraj) {
@@ -181,18 +234,18 @@ const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj, autoPrint }) 
     }
   };
 
-   return (
-      <div>
-         <div style={{ display: "none" }}>
-            <div ref={receiptRef}>
-               <Receipt order={printOrder ?? order} />
-            </div>
-         </div>
+  return (
+    <div>
+      <div style={{ display: "none" }}>
+        <div ref={receiptRef}>
+          <Receipt order={printOrder ?? order} />
+        </div>
+      </div>
 
       <button
         onClick={handleClick}
         className={onFiskaliziraj ? "btn-success" : "btn-primary"}
-        style={{ width: '100%', padding: '10px', marginTop: '10px' }}
+        style={{ width: "100%", padding: "10px", marginTop: "10px" }}
       >
         {onFiskaliziraj ? "Fiskaliziraj i Ispiši" : "Ispiši Račun"}
       </button>

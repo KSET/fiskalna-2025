@@ -8,17 +8,18 @@ export default function Racuni() {
   const [searchTerm, setSearchTerm] = useState("");
   const [printData, setPrintData] = useState(null);
 
-
   useEffect(() => {
     fetchReceipts();
   }, []);
 
   const fetchReceipts = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/receipts`, {
+      // ENDPOINT ZA VRIJEME
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/receipts/current-session`, {
         credentials: "include",
       });
       const data = await response.json();
+      
       if (!response.ok || !Array.isArray(data)) {
         console.error("API error or invalid data:", data);
         setReceipts([]);
@@ -51,9 +52,13 @@ export default function Racuni() {
           credentials: "include",
         });
         if (!res.ok) throw new Error("Storno failed");
-        const stornoReceipt = await res.json();
+        
+        // Osvježavamo listu nakon storniranja
         fetchReceipts();
-        const printRes = await fetch(`${import.meta.env.VITE_API_URL}/api/receipts/${stornoReceipt.id}/print`, {
+        
+        // Automatski ispis storno računa
+        const stornoData = await res.json();
+        const printRes = await fetch(`${import.meta.env.VITE_API_URL}/api/receipts/${stornoData.id}/print`, {
           credentials: "include",
         });
         if (printRes.ok) setPrintData(await printRes.json());
@@ -78,17 +83,23 @@ export default function Racuni() {
     }
   };
 
-
-  if (loading) return <div className="page-container" style={{color: '#333', padding: '40px 20px'}}>Učitavanje...</div>;
+  if (loading) return <div className="page-container" style={{color: '#333', padding: '40px 20px'}}>Učitavanje sesije...</div>;
 
   return (
     <>
     <div className="page-container">
-      <h1>Računi</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+        <h1>Računi (Trenutna sesija)</h1>
+        <button onClick={fetchReceipts} className="btn-small" style={{ background: '#eee' }}>Osvježi ↻</button>
+      </div>
+
+      <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '5px', marginBottom: '20px', fontSize: '13px', color: '#666', border: '1px solid #eee' }}>
+        Prikazuju se računi od <strong>06:00h</strong> danas do kraja smjene.
+      </div>
       
       <input
         type="text"
-        placeholder="Pretraži račune (broj, način plaćanja, prodavač, iznos)..."
+        placeholder="Pretraži račune u ovoj sesiji..."
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
         style={{
@@ -103,7 +114,7 @@ export default function Racuni() {
       />
 
       <div style={{color: '#666', marginBottom: '15px'}}>
-        Pronađeno: {filteredReceipts.length} od {receipts.length} računa
+        Pronađeno: {filteredReceipts.length} računa
       </div>
 
       <div className="table-container">
@@ -111,10 +122,10 @@ export default function Racuni() {
           <thead>
             <tr>
               <th>Broj računa</th>
-              <th>Datum i vrijeme</th>
-              <th>Način plaćanja</th>
+              <th>Vrijeme</th>
+              <th>Plaćanje</th>
               <th>Ukupno</th>
-              <th>Kreirano od</th>
+              <th>Prodavač</th>
               <th>Status</th>
               <th>Akcije</th>
             </tr>
@@ -126,49 +137,38 @@ export default function Racuni() {
                              : '';
               return (
                 <tr key={receipt.id} className={rowClass}>
-                  <td>{receipt.invoiceNumber}</td>
+                  <td><strong>{receipt.invoiceNumber}</strong></td>
                   <td>
-                    {new Date(receipt.createdAt).toLocaleDateString("hr-HR")} {new Date(receipt.createdAt).toLocaleTimeString("hr-HR", {hour: '2-digit', minute: '2-digit'})}
+                    {new Date(receipt.createdAt).toLocaleTimeString("hr-HR", {hour: '2-digit', minute: '2-digit'})}
                   </td>
                   <td>{receipt.paymentType}</td>
                   <td><span className="currency">{parseFloat(receipt.brutto).toFixed(2)}</span></td>
                   <td>{receipt.user?.name || "N/A"}</td>
                   <td>
-                    {receipt.status === 'STORNO' && (
-                      <span className="badge-danger">Storno</span>
-                    )}
-                    {receipt.status === 'RACUN_STORNIRAN' && (
-                      <span className="badge-danger">Otkazan</span>
-                    )}
-                    {receipt.status === 'RACUN' && (
-                      <span className="badge-success">Aktivan</span>
-                    )}
+                    {receipt.status === 'STORNO' && <span className="badge-danger">Storno</span>}
+                    {receipt.status === 'RACUN_STORNIRAN' && <span className="badge-danger">Otkazan</span>}
+                    {receipt.status === 'RACUN' && <span className="badge-success">Aktivan</span>}
                   </td>
                   <td className="actions">
-                    <button
-                      onClick={() => handlePrint(receipt.id)}
-                      className="btn-small btn-primary"
-                    >
-                      Ispiši
-                    </button>
+                    <button onClick={() => handlePrint(receipt.id)} className="btn-small btn-primary">Ispiši</button>
                     {receipt.status === 'RACUN' && (
-                      <button
-                        onClick={() => handleStorno(receipt.id)}
-                        className="btn-small btn-danger"
-                      >
-                        Storno
-                      </button>
+                      <button onClick={() => handleStorno(receipt.id)} className="btn-small btn-danger">Storno</button>
                     )}
                   </td>
                 </tr>
               );
             })}
+            {filteredReceipts.length === 0 && (
+              <tr>
+                <td colSpan="7" style={{ textAlign: 'center', padding: '30px', color: '#999' }}>Nema izdanih računa u ovoj sesiji.</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
     </div>
 
-    {/* Print Modal */}
+    {/* Print Logic */}
     {printData && (
       <div style={{ display: 'none' }}>
         <ReceiptPrintButton

@@ -176,3 +176,12 @@ model SalesReport {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 }
+
+model ProdajnoMjesto {
+  id              Int      @id @default(autoincrement())
+  name            String
+  businessSpace   String
+  paymentDevice   String
+  firaApiKey      String
+  active          Boolean  @default(true)
+}

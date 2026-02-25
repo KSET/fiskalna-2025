@@ -229,13 +229,13 @@ export default function Prodaja() {
           </div>
         </div>
 
-        <div className="cart">
+        <div  className="cart" style={{ height: 'auto', overflow: 'visible' }}>
           <h2>Košarica</h2>
           {selectedItems.length === 0 ? (
             <p className="empty-cart">Košarica je prazna</p>
           ) : (
             <>
-              <div className="cart-items">
+              <div className="cart-items" style={{ maxHeight: 'none', overflow: 'visible' }}>
                 {selectedItems.map(item => (
                   <div key={item.articleId} className="cart-item">
                     <div className="cart-item-info">

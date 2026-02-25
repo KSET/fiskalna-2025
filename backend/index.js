@@ -5,11 +5,13 @@ import session from "express-session";
 import passport from "passport";
 import pg from "pg";
 import { createRequire } from "module";
-import prisma from "./auth.js"; // <- your cleaned auth.js
+import prisma from "./auth.js"; 
 import requireAuth from "./middleware/requireAuth.js";
 import { handleOrderFiscalization } from "./fira.js";
+import { getSessionRange } from './utils/sessionHelper.js';
 
 const require = createRequire(import.meta.url);
+const { encrypt, decrypt } = require('./utils/crypto');
 const connectPgSimple = require("connect-pg-simple");
 const PgSession = connectPgSimple(session);
 const pgPool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
@@ -220,7 +222,83 @@ app.get("/api/receipts", requireAuth, async (req, res) => {
   }
 });
 
-// Get receipt for printing - secure endpoint with authentication
+// ZA SESSIJU OD 6 DO 6 
+app.get('/api/receipts/current-session', async (req, res) => {
+  try {
+    const now = new Date();
+    const start = new Date(now);
+
+    if (now.getHours() < 6) {
+      start.setDate(now.getDate() - 1);
+    }
+    start.setHours(6, 0, 0, 0);
+
+    const receipts = await prisma.receipt.findMany({
+      where: {
+        createdAt: {
+          gte: start,
+        },
+      },
+      include: { items: true },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json(receipts);
+  } catch (error) {
+    res.status(500).json({ error: "Greška pri dohvaćanju trenutne sesije" });
+  }
+});
+
+app.get('/api/receipts/active-dates', async (req, res) => {
+  try {
+    const receipts = await prisma.receipt.findMany({
+      select: { createdAt: true }
+    });
+
+    const uniqueDates = new Set();
+
+    receipts.forEach(r => {
+      const d = new Date(r.createdAt);
+      d.setHours(d.getHours() - 6);
+      uniqueDates.add(d.toISOString().split('T')[0]);
+    });
+
+    res.json(Array.from(uniqueDates));
+  } catch (error) {
+    res.status(500).json({ error: "Greška pri dohvaćanju datuma" });
+  }
+});
+
+app.get('/api/receipts/range', async (req, res) => {
+  const { from, to } = req.query;
+
+  try {
+    // Od 6 gleda
+    const startDate = new Date(from);
+    startDate.setHours(6, 0, 0, 0);
+
+    const endDate = new Date(to);
+    endDate.setDate(endDate.getDate() + 1);
+    endDate.setHours(5, 59, 59, 999);
+
+    const receipts = await prisma.receipt.findMany({
+      where: {
+        createdAt: {
+          gte: startDate,
+          lte: endDate
+        }
+      },
+      include: { items: { include: { article: true } } },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    res.json(receipts);
+  } catch (error) {
+    console.error("Query Error:", error);
+    res.status(500).json({ error: "Greška pri dohvaćanju raspona." });
+  }
+});
+
 app.get("/api/receipts/:id/print", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
@@ -717,6 +795,82 @@ app.post("/api/reports", requireAuth, async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 });
+
+
+// GET all prodajna mjesta
+app.get('/api/prodajna-mjesta', async (req, res) => {
+  try {
+    const locations = await prisma.prodajnoMjesto.findMany();
+    const safeLocations = locations.map(loc => ({
+      ...loc,
+      firaApiKey: "********" // Don't send the real key back to the UI!
+    }));
+    res.json(safeLocations);
+  } catch (error) {
+    res.status(500).json({ error: "Greška" });
+  }
+});
+
+// POST new prodajno mjesto
+app.post('/api/prodajna-mjesta', async (req, res) => {
+  try {
+    const { name, businessSpace, paymentDevice, firaApiKey, active } = req.body;
+
+    // Log for debugging
+    console.log("Attempting to encrypt key...");
+    const encryptedKey = encrypt(firaApiKey);
+    
+    console.log("Attempting to save to database...");
+    const newLocation = await prisma.prodajnoMjesto.create({
+      data: { 
+        name, 
+        businessSpace, 
+        paymentDevice, 
+        firaApiKey: encryptedKey, 
+        active 
+      }
+    });
+
+    res.json(newLocation);
+  } catch (error) {
+    // THIS LOG IS CRUCIAL: Check your terminal for this output!
+    console.error("CRITICAL BACKEND ERROR:", error.message);
+    
+    res.status(500).json({ 
+      error: "Internal Server Error", 
+      details: error.message 
+    });
+  }
+});
+
+// PUT (update) prodajno mjesto
+app.put('/api/prodajna-mjesta/:id', async (req, res) => {
+  const { id } = req.params;
+  const { name, businessSpace, paymentDevice, firaApiKey, active } = req.body;
+  try {
+    const updated = await prisma.prodajnoMjesto.update({
+      where: { id: parseInt(id) },
+      data: { name, businessSpace, paymentDevice, firaApiKey, active }
+    });
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: "Greška pri ažuriranju" });
+  }
+});
+
+// DELETE prodajno mjesto
+app.delete('/api/prodajna-mjesta/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await prisma.prodajnoMjesto.delete({
+      where: { id: parseInt(id) }
+    });
+    res.json({ message: "Obrisano" });
+  } catch (error) {
+    res.status(500).json({ error: "Greška pri brisanju" });
+  }
+});
+
 
 // ========== USERS API ==========
 app.get("/api/users", requireAuth, async (req, res) => {
