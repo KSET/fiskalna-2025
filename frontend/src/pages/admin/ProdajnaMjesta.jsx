@@ -15,24 +15,36 @@ export default function ProdajnaMjesta() {
     active: true,
   });
 
-  const fetchLocations = async () => {
+  const refreshData = async () => {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/prodajna-mjesta`, {
         credentials: "include",
       });
       const data = await response.json();
       setLocations(Array.isArray(data) ? data : []);
-      setLoading(false);
     } catch (error) {
-      console.error("Error fetching locations:", error);
-      setLocations([]);
-      setLoading(false);
+      console.error("Error refreshing locations:", error);
     }
   };
 
   useEffect(() => {
+    const fetchLocations = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/prodajna-mjesta`, {
+          credentials: "include",
+        });
+        const data = await response.json();
+        setLocations(Array.isArray(data) ? data : []);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching locations:", error);
+        setLocations([]);
+        setLoading(false);
+      }
+    };
+
     fetchLocations();
-  }, []);
+  }, []); 
 
   const resetForm = () => {
     setFormData({
@@ -64,7 +76,7 @@ export default function ProdajnaMjesta() {
         alert(editingId ? "Prodajno mjesto je ažurirano!" : "Prodajno mjesto je kreirano!");
         resetForm();
         setShowForm(false);
-        fetchLocations();
+        refreshData();
       }
     } catch (error) {
       console.error("Error saving location:", error);
@@ -93,7 +105,7 @@ export default function ProdajnaMjesta() {
 
         if (response.ok) {
           alert("Prodajno mjesto je obrisano!");
-          fetchLocations();
+          refreshData();
         }
       } catch (error) {
         console.error("Error deleting location:", error);
@@ -110,7 +122,7 @@ export default function ProdajnaMjesta() {
         credentials: "include",
         body: JSON.stringify({ ...location, active: !currentActive }),
       });
-      fetchLocations();
+      refreshData();
     } catch (error) {
       console.error("Error toggling status:", error);
     }
@@ -186,7 +198,7 @@ export default function ProdajnaMjesta() {
                 checked={formData.active}
                 onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
               />
-              Aktivno
+              {" "}Aktivno
             </label>
           </div>
 
