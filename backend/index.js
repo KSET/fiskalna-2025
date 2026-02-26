@@ -76,6 +76,13 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
+app.get("/api/config", (req, res) => {
+  const key = process.env.FIRA_API_KEY || "";
+  res.json({
+    firaApiKey: key ? `${key.slice(0, 4)}...${key.slice(-4)}` : "",
+  });
+});
+
 // Routes
 app.get("/auth/google", (req, res, next) => {
   // Save the frontend origin so we can redirect back to it after OAuth

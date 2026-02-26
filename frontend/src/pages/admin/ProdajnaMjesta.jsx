@@ -6,6 +6,7 @@ export default function ProdajnaMjesta() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [firaApiUrl, setFiraApiUrl] = useState("");
   
   const [formData, setFormData] = useState({
     name: "",
@@ -44,7 +45,12 @@ export default function ProdajnaMjesta() {
     };
 
     fetchLocations();
-  }, []); 
+
+    fetch(`${import.meta.env.VITE_API_URL}/api/config`, { credentials: "include" })
+      .then(r => r.json())
+      .then(data => setFiraApiUrl(data.firaApiKey || ""))
+      .catch(() => {});
+  }, []);
 
   const resetForm = () => {
     setFormData({
@@ -134,6 +140,11 @@ export default function ProdajnaMjesta() {
     <div className="page-container">
       <div className="page-header">
         <h1>Upravljanje Prodajnim Mjestima</h1>
+        {firaApiUrl && (
+          <p style={{ margin: 0, fontSize: "0.85rem", color: "#666" }}>
+            FIRA API Key: <code>{firaApiUrl}</code>
+          </p>
+        )}
         <button
           onClick={() => {
             resetForm();
