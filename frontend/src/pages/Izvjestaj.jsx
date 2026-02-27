@@ -192,7 +192,7 @@ export default function Izvjestaj() {
 
   if (loading) return <div className="page-container" style={{color: '#333', padding: '40px 20px'}}>Učitavanje sesije...</div>;
 
-  return (
+return (
     <div className="page-container" id="report-container">
       <div className="report-header" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
         <h1 style={{margin: 0, color: '#333'}}>Trenutna sesija</h1>
@@ -206,7 +206,7 @@ export default function Izvjestaj() {
         <div>{positiveReceipts.length} računa</div>
       </div>
 
-      <table style={{width: '100%', borderCollapse: 'collapse', marginBottom: '10px', background: 'white'}}>
+      <table style={{width: '100%', borderCollapse: 'collapse', marginBottom: '20px', background: 'white'}}>
         <tbody>
           <tr style={{borderBottom: '1px solid #ddd'}}>
             <td style={{padding: '8px 15px', color: '#666'}}>Prvi račun</td>
@@ -219,6 +219,27 @@ export default function Izvjestaj() {
         </tbody>
       </table>
 
+      <h3 style={{marginBottom: '10px', color: '#444'}}>Promet po načinima plaćanja</h3>
+      <table style={{width: '100%', borderCollapse: 'collapse', marginBottom: '20px', background: 'white'}}>
+        <thead>
+          <tr style={{background: '#f2f2f2'}}>
+            <th style={{padding: '8px 15px', textAlign: 'left'}}>Način plaćanja</th>
+            <th style={{padding: '8px 15px', textAlign: 'center'}}>Br. računa</th>
+            <th style={{padding: '8px 15px', textAlign: 'right'}}>Iznos</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(paymentTotals).map(([method, total]) => (
+            <tr key={method} style={{borderBottom: '1px solid #ddd'}}>
+              <td style={{padding: '8px 15px', fontWeight: '500'}}>{method}</td>
+              <td style={{padding: '8px 15px', textAlign: 'center'}}>{paymentCounts[method] || 0}</td>
+              <td style={{padding: '8px 15px', textAlign: 'right', fontWeight: 'bold'}}>{total.toFixed(2)} €</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <h3 style={{marginBottom: '10px', color: '#444'}}>Prodani artikli</h3>
       <table style={{width: '100%', borderCollapse: 'collapse', marginBottom: '10px', background: 'white'}}>
         <thead>
           <tr style={{background: '#ddd'}}>
@@ -238,14 +259,23 @@ export default function Izvjestaj() {
         </tbody>
       </table>
 
-      <div style={{background: '#ddd', padding: '10px 15px', marginBottom: '10px', textAlign: 'right', fontWeight: '600'}}>
-        UKUPNO PROMET: {grandTotal.toFixed(2)} €
+      <div style={{marginTop: '20px'}}>
+        <div style={{background: '#ddd', padding: '10px 15px', textAlign: 'right', fontWeight: '600'}}>
+          UKUPNO PROMET: {grandTotal.toFixed(2)} €
+        </div>
+
+        {paymentTotals["GOTOVINA"] !== undefined && (
+          <div style={{background: '#e2e8f0', padding: '10px 15px', textAlign: 'right', fontWeight: '600', color: '#444', borderTop: '1px solid #ccc'}}>
+            Gotovina + Polog (130.00 €): {(paymentTotals["GOTOVINA"] + 130).toFixed(2)} €
+          </div>
+        )}
+
+        <div style={{background: '#FF8C04', padding: '10px 15px', marginBottom: '20px', textAlign: 'right', fontWeight: 'bold', color: 'white', fontSize: '18px'}}>
+          Sveukupno za predati (Promet + Polog): {(grandTotal + 130).toFixed(2)} €
+        </div>
       </div>
 
-      <div style={{background: '#FF8C04', padding: '10px 15px', marginBottom: '20px', textAlign: 'right', fontWeight: '600', color: 'white', fontSize: '16px'}}>
-        Ukupno + Polog: {(grandTotal + 130).toFixed(2)} €
-      </div>
-
+      {/* Skriveni dio za ispis */}
       <div style={{display: 'none'}}>
         <div ref={receiptRef}>
           <IzvjestajReceipt data={reportData} />

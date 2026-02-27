@@ -19,7 +19,7 @@ export default function Racuni() {
         credentials: "include",
       });
       const data = await response.json();
-      
+      //console.log("Struktura prvog računa:", data[0]); // POGLEDAJ OVO U KONZOLI
       if (!response.ok || !Array.isArray(data)) {
         console.error("API error or invalid data:", data);
         setReceipts([]);
@@ -143,7 +143,12 @@ export default function Racuni() {
                   </td>
                   <td>{receipt.paymentType}</td>
                   <td><span className="currency">{parseFloat(receipt.brutto).toFixed(2)}</span></td>
-                  <td>{receipt.user?.name || "N/A"}</td>
+                  <td>
+                    {receipt.user?.name || 
+                    receipt.userName || 
+                    JSON.parse(localStorage.getItem("user"))?.name || 
+                    "N/A"}
+                  </td>
                   <td>
                     {receipt.status === 'STORNO' && <span className="badge-danger">Storno</span>}
                     {receipt.status === 'RACUN_STORNIRAN' && <span className="badge-danger">Otkazan</span>}

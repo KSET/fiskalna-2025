@@ -229,7 +229,6 @@ app.get("/api/receipts", requireAuth, async (req, res) => {
   }
 });
 
-// ZA SESSIJU OD 6 DO 6 
 app.get('/api/receipts/current-session', async (req, res) => {
   try {
     const now = new Date();
@@ -246,12 +245,20 @@ app.get('/api/receipts/current-session', async (req, res) => {
           gte: start,
         },
       },
-      include: { items: true },
+      include: { 
+        items: true,
+        user: {
+          select: {
+            name: true 
+          }
+        }
+      },
       orderBy: { createdAt: 'desc' }
     });
 
     res.json(receipts);
   } catch (error) {
+    console.error("Session fetch error:", error);
     res.status(500).json({ error: "Greška pri dohvaćanju trenutne sesije" });
   }
 });
@@ -295,7 +302,9 @@ app.get('/api/receipts/range', async (req, res) => {
           lte: endDate
         }
       },
-      include: { items: { include: { article: true } } },
+      include: { items: { include: { article: true } }, 
+    user: { select: { name: true } } 
+    },
       orderBy: { createdAt: 'asc' }
     });
 
