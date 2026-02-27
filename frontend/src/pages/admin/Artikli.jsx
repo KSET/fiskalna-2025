@@ -213,12 +213,7 @@ export default function Artikli() {
             <label>Kategorija:</label>
             <select
               value={formData.categoryId}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  categoryId: e.target.value ? Number(e.target.value) : ""
-                })
-              }
+              onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
             >
               <option value="">-- Odaberi kategoriju --</option>
               {categories.map(cat => (
