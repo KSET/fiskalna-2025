@@ -160,15 +160,37 @@ app.get("/api/articles", requireAuth, async (req, res) => {
 });
 
 app.post("/api/articles", requireAuth, async (req, res) => {
-  // Only admin can create articles
   if (req.user.role !== "ADMIN") {
     return res.status(403).json({ error: "Unauthorized" });
   }
+
   try {
-    const { name, productCode, kpdCode, price, taxRate, description, unit } = req.body;
+    const { 
+      name, 
+      productCode, 
+      kpdCode, 
+      price, 
+      taxRate, 
+      description, 
+      unit,
+      categoryId,
+      active
+    } = req.body;
+
     const article = await prisma.article.create({
-      data: { name, productCode, kpdCode, price, taxRate, description, unit },
+      data: {
+        name,
+        productCode,
+        kpdCode,
+        price,
+        taxRate,
+        description,
+        unit,
+        active,
+        categoryId: categoryId || null
+      },
     });
+
     res.status(201).json(article);
   } catch (error) {
     res.status(400).json({ error: error.message });
