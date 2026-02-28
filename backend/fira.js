@@ -16,6 +16,10 @@
  * @param {Array}  order.items - Array of receipt items
  */
 export async function handleOrderFiscalization(order) {
+  if (!order.paymentType) {
+    throw new Error(`Order ${order.code} is missing paymentType. Must be KARTICA or GOTOVINA.`);
+  }
+
   // Skip free orders - no invoice needed
   // if (order.total === 0) {
   //   console.log(`Order ${order.code} has total of 0. Skipping FIRA invoice creation.`);
@@ -95,7 +99,7 @@ export async function handleOrderFiscalization(order) {
     invoiceType: process.env.FIRA_INVOICE_TYPE || 'PONUDA',
     createdAt,
     currency: order.currency,
-    paymentType: "KARTICA",
+    paymentType: order.paymentType,
     taxesIncluded: true,
     brutto: totalBrutto,
     netto: totalNetto,

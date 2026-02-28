@@ -507,6 +507,7 @@ app.post("/api/receipts", requireAuth, async (req, res) => {
       email: receipt.billingAddress?.email,
       createdAt: receipt.createdAt,
       currency: receipt.currency,
+      paymentType: receipt.paymentType,
       items: receipt.items,
     });
 
@@ -634,6 +635,7 @@ app.put("/api/receipts/:id/storno", requireAuth, async (req, res) => {
       email: null,
       createdAt: stornoReceipt.createdAt,
       currency: stornoReceipt.currency,
+      paymentType: stornoReceipt.paymentType,
       items: stornoReceipt.items,
     });
 
