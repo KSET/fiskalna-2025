@@ -139,7 +139,7 @@ export default function Racuni() {
                 <tr key={receipt.id} className={rowClass}>
                   <td><strong>{receipt.invoiceNumber}</strong></td>
                   <td>
-                    {new Date(receipt.createdAt).toLocaleTimeString("hr-HR", {hour: '2-digit', minute: '2-digit'})}
+                    {new Date(receipt.createdAt).toLocaleTimeString("hr-HR", {hour: '2-digit', minute: '2-digit', second: '2-digit'})}
                   </td>
                   <td>{receipt.paymentType}</td>
                   <td><span className="currency">{parseFloat(receipt.brutto).toFixed(2)}</span></td>
