@@ -17,7 +17,8 @@ export default function Prodaja() {
   const [searchParams] = useSearchParams();
   const [offlineCount, setOfflineCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
-
+  const [isProcessing, setIsProcessing] = useState(false);
+  
   const { totalBrutto, totalNetto, totalTax } = useMemo(() => {
     const brutto = selectedItems.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0);
     const netto = selectedItems.reduce((sum, item) => {
@@ -149,6 +150,8 @@ export default function Prodaja() {
   };
 
   const handleFiskaliziraj = async (printFunction) => {
+    if (isProcessing) return;
+    setIsProcessing(true);
     const receipt = await handleCheckout();
     if (receipt) {
       const buildPoreznaLink = (jir, dateStr, brutto) => {
@@ -176,6 +179,9 @@ export default function Prodaja() {
         email: "info@kset.org",
       });
     }
+    else {
+      setIsProcessing(false);
+    }
   };
 
   if (loading) return <div className="page-container" style={{ color: '#333', padding: '40px 20px' }}>Učitavanje...</div>;
@@ -185,6 +191,93 @@ export default function Prodaja() {
 
   return (
     <div className="page-container">
+      <style>{`
+        @media (min-width: 768px) {
+          .prodaja-layout {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 20px;
+            height: calc(100vh - 120px);
+            align-items: start;
+          }
+
+          .articles-grid {
+            height: 100%;
+            overflow-y: auto;
+            padding-right: 10px;
+          }
+
+          .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important;
+            gap: 15px !important;
+          }
+
+          .article-card {
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 20px !important;
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: transform 0.1s, border-color 0.1s;
+          }
+
+          .article-card:active {
+            transform: scale(0.96);
+            border-color: #667eea;
+          }
+
+          .cart {
+            position: sticky;
+            top: 0;
+            background: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            max-height: 100%;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            height: auto !important;
+          }
+
+          .cart-items {
+            flex: 1;
+            overflow-y: auto !important;
+            max-height: 45vh !important;
+            margin-bottom: 15px;
+          }
+
+          .cart-item {
+            padding: 12px 0 !important;
+            border-bottom: 1px solid #eee;
+          }
+
+          .quantity-control button {
+            width: 40px !important;
+            height: 40px !important;
+            font-size: 1.2rem !important;
+          }
+
+          .quantity-control input {
+            font-size: 1.1rem !important;
+            width: 40px !important;
+          }
+        }
+
+        .articles-grid::-webkit-scrollbar, .cart-items::-webkit-scrollbar {
+          width: 6px;
+        }
+        .articles-grid::-webkit-scrollbar-thumb, .cart-items::-webkit-scrollbar-thumb {
+          background: #ccc;
+          border-radius: 10px;
+        }
+      `}</style>
+
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
         <h1>
           Prodaja 
@@ -229,7 +322,7 @@ export default function Prodaja() {
           </div>
         </div>
 
-        <div  className="cart" style={{ height: 'auto', overflow: 'visible' }}>
+        <div className="cart" style={{ height: 'auto', overflow: 'visible' }}>
           <h2>Košarica</h2>
           {selectedItems.length === 0 ? (
             <p className="empty-cart">Košarica je prazna</p>
@@ -261,12 +354,40 @@ export default function Prodaja() {
               </div>
 
               <div className="checkout-section">
-                <div className="payment-method">
-                  <label>Način plaćanja:</label>
-                  <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-                    <option>Gotovina</option>
-                    <option>Kartica</option>
-                  </select>
+                <div className="payment-method" style={{ marginBottom: '15px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Način plaćanja:</label>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <label style={{ 
+                      flex: 1, border: '1px solid #ddd', padding: '10px', borderRadius: '5px', textAlign: 'center', cursor: 'pointer',
+                      backgroundColor: paymentMethod === "Gotovina" ? "#667eea" : "white",
+                      color: paymentMethod === "Gotovina" ? "white" : "#333"
+                    }}>
+                      <input 
+                        type="radio" 
+                        name="payment" 
+                        value="Gotovina" 
+                        checked={paymentMethod === "Gotovina"} 
+                        onChange={(e) => setPaymentMethod(e.target.value)}
+                        style={{ display: 'none' }} 
+                      />
+                      Gotovina
+                    </label>
+                    <label style={{ 
+                      flex: 1, border: '1px solid #ddd', padding: '10px', borderRadius: '5px', textAlign: 'center', cursor: 'pointer',
+                      backgroundColor: paymentMethod === "Kartica" ? "#667eea" : "white",
+                      color: paymentMethod === "Kartica" ? "white" : "#333"
+                    }}>
+                      <input 
+                        type="radio" 
+                        name="payment" 
+                        value="Kartica" 
+                        checked={paymentMethod === "Kartica"} 
+                        onChange={(e) => setPaymentMethod(e.target.value)}
+                        style={{ display: 'none' }}
+                      />
+                      Kartica
+                    </label>
+                  </div>
                 </div>
 
                 <div className="total" style={{ margin: '20px 0', borderTop: '1px solid #ddd', paddingTop: '10px' }}>
@@ -289,7 +410,11 @@ export default function Prodaja() {
                     email: "info@kset.org",
                   }}
                   onFiskaliziraj={handleFiskaliziraj}
-                  onAfterPrint={() => setSelectedItems([])}
+                  onAfterPrint={() => {
+                    setSelectedItems([]);
+                    setPaymentMethod("Gotovina");
+                    setIsProcessing(false);
+                  }}
                 />
                 <button onClick={() => setSelectedItems([])} className="btn-danger" style={{ width: '100%', marginTop: '10px' }}>
                   Isprazni košaricu

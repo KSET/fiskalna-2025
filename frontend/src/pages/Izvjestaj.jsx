@@ -3,7 +3,7 @@ import "../styles/Pages.css";
 
 const fmtDate = (d) => d ? d.toLocaleDateString("hr-HR", { day: '2-digit', month: '2-digit', year: 'numeric' }) + " " + d.toLocaleTimeString("hr-HR", { hour: '2-digit', minute: '2-digit' }) : "N/A";
 
-const IzvjestajReceipt = ({ data }) => {
+const IzvjestajReceipt = ({ data, pologValue }) => {
   const W = 42;
   const line = "─".repeat(W);
 
@@ -81,8 +81,8 @@ ${paymentLines}
 ${line}
 ${rpad("UKUPNO", W - COL_TOT - 1)}${lpad(grandTotal.toFixed(2) + " \u20ac", COL_TOT + 1)}
 ${line}
-${firstMethod ? rpad(firstMethod + " + Polog", W - COL_TOT - 1) + lpad((Math.abs(firstMethodTotal) + 130).toFixed(2) + " \u20ac", COL_TOT + 1) : ""}
-${rpad("Ukupno + Polog", W - COL_TOT - 1)}${lpad((Math.abs(grandTotal) + 130).toFixed(2) + " \u20ac", COL_TOT + 1)}
+${firstMethod ? rpad(firstMethod + " + Polog", W - COL_TOT - 1) + lpad((Math.abs(firstMethodTotal) + pologValue).toFixed(2) + " \u20ac", COL_TOT + 1) : ""}
+${rpad("Ukupno + Polog", W - COL_TOT - 1)}${lpad((Math.abs(grandTotal) + pologValue).toFixed(2) + " \u20ac", COL_TOT + 1)}
 ${line}
 ${center("#fiskalizacija")}`}
       </pre>
@@ -93,16 +93,14 @@ ${center("#fiskalizacija")}`}
 export default function Izvjestaj() {
   const [receipts, setReceipts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [polog, setPolog] = useState(130); // Default polog value
   const receiptRef = useRef();
 
   useEffect(() => {
     const fetchCurrentSession = async () => {
       try {
-        // We calculate the logical "start of session" for 6 AM
         const now = new Date();
         const start = new Date();
-        
-        // If it's before 6 AM, the session started yesterday at 6 AM
         if (now.getHours() < 6) {
           start.setDate(start.getDate() - 1);
         }
@@ -126,7 +124,6 @@ export default function Izvjestaj() {
     fetchCurrentSession();
   }, []);
 
-  // Sort and filter logic
   const dayReceipts = [...receipts].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
   const positiveReceipts = dayReceipts.filter(r => 
     r.status !== 'STORNO' && r.status !== 'RACUN_STORNIRAN'
@@ -196,9 +193,22 @@ return (
     <div className="page-container" id="report-container">
       <div className="report-header" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
         <h1 style={{margin: 0, color: '#333'}}>Trenutna sesija</h1>
-        <button onClick={handlePrint} className="btn-primary no-print" style={{background: '#667eea', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '5px', cursor: 'pointer'}}>
-          Ispiši ✓
-        </button>
+        <div style={{display: 'flex', gap: '15px', alignItems: 'center'}}>
+           {/* POLOG INPUT FIELD */}
+           <div style={{display: 'flex', alignItems: 'center', background: '#f2f2f2', padding: '5px 10px', borderRadius: '5px', border: '1px solid #ccc'}}>
+             <label style={{marginRight: '10px', fontSize: '14px', fontWeight: 'bold', color: '#666'}}>POLOG:</label>
+             <input 
+               type="number" 
+               value={polog} 
+               onChange={(e) => setPolog(parseFloat(e.target.value) || 0)}
+               style={{width: '80px', border: '1px solid #ccc', padding: '5px', borderRadius: '3px', fontWeight: 'bold'}}
+             />
+             <span style={{marginLeft: '5px', fontWeight: 'bold'}}>€</span>
+           </div>
+           <button onClick={handlePrint} className="btn-primary no-print" style={{background: '#667eea', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '5px', cursor: 'pointer'}}>
+             Ispiši ✓
+           </button>
+        </div>
       </div>
 
       <div style={{ background: '#ddd', padding: '10px 15px', marginBottom: '10px', fontWeight: '600', color: '#333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -266,19 +276,19 @@ return (
 
         {paymentTotals["GOTOVINA"] !== undefined && (
           <div style={{background: '#e2e8f0', padding: '10px 15px', textAlign: 'right', fontWeight: '600', color: '#444', borderTop: '1px solid #ccc'}}>
-            Gotovina + Polog (130.00 €): {(paymentTotals["GOTOVINA"] + 130).toFixed(2)} €
+            Gotovina + Polog ({polog.toFixed(2)} €): {(paymentTotals["GOTOVINA"] + polog).toFixed(2)} €
           </div>
         )}
 
         <div style={{background: '#FF8C04', padding: '10px 15px', marginBottom: '20px', textAlign: 'right', fontWeight: 'bold', color: 'white', fontSize: '18px'}}>
-          Sveukupno za predati (Promet + Polog): {(grandTotal + 130).toFixed(2)} €
+          Sveukupno za predati (Promet + Polog): {(grandTotal + polog).toFixed(2)} €
         </div>
       </div>
 
-      {/* Skriveni dio za ispis */}
+      {/* ISPIS SVEGA */}
       <div style={{display: 'none'}}>
         <div ref={receiptRef}>
-          <IzvjestajReceipt data={reportData} />
+          <IzvjestajReceipt data={reportData} pologValue={polog} />
         </div>
       </div>
     </div>

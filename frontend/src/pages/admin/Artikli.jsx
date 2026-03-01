@@ -33,17 +33,7 @@ export default function Artikli() {
   };
 
   useEffect(() => {
-    (async () => {
-      try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/articles`, { credentials: "include" });
-        const data = await response.json();
-        setArticles(data);
-        setLoading(false);
-      } catch (error) {
-        console.error("Error fetching articles:", error);
-        setLoading(false);
-      }
-    })();
+    fetchArticles();
     (async () => {
       try {
         const response = await fetch(`${import.meta.env.VITE_API_URL}/api/categories`, { credentials: "include" });
@@ -99,6 +89,23 @@ export default function Artikli() {
     setFormData({ ...article, categoryId: article.categoryId || "" });
     setEditingId(article.id);
     setShowForm(true);
+  };
+
+  const handleDuplicate = (article) => {
+    const baseName = article.name.replace(/\s\(\d+\)$/, "");
+    const existingCopies = articles.filter(a => a.name.startsWith(baseName));
+    const nextNumber = existingCopies.length;
+
+    setFormData({
+      ...article,
+      name: `${baseName} (${nextNumber})`,
+      productCode: `${article.productCode}-${nextNumber}`,
+      categoryId: article.categoryId || "",
+    });
+    
+    setEditingId(null);
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDelete = async (id) => {
@@ -231,19 +238,21 @@ export default function Artikli() {
               Aktivan
             </label>
           </div>
-          <button type="submit" className="btn-success">
-            {editingId ? "Ažuriraj" : "Spremi"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              resetForm();
-              setShowForm(false);
-            }}
-            className="btn-secondary"
-          >
-            Otkaži
-          </button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button type="submit" className="btn-success">
+                {editingId ? "Ažuriraj" : "Spremi"}
+            </button>
+            <button
+                type="button"
+                onClick={() => {
+                resetForm();
+                setShowForm(false);
+                }}
+                className="btn-secondary"
+            >
+                Otkaži
+            </button>
+          </div>
         </form>
       )}
 
@@ -281,6 +290,14 @@ export default function Artikli() {
                   </label>
                 </td>
                 <td className="actions">
+                  <button
+                    onClick={() => handleDuplicate(article)}
+                    className="icon-btn duplicate"
+                    title="Dupliciraj"
+                    style={{ color: '#667eea', marginRight: '5px' }}
+                  >
+                    <i className="fas fa-copy"></i>
+                  </button>
                   <button
                     onClick={() => handleEdit(article)}
                     className="icon-btn edit"

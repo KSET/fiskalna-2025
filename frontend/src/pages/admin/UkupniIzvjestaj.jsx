@@ -369,14 +369,45 @@ export default function UkupniIzvjestaj() {
         UKUPNO: {grandTotal.toFixed(2)} €
       </div>
 
-      <div style={{background: '#FF8C04', padding: '10px 15px', marginBottom: '10px', textAlign: 'right', fontWeight: '600', color: 'white'}}>
-        {Object.keys(paymentTotals)[0] || "Plaćanje"} + Polog: {(Math.abs(Object.values(paymentTotals)[0] || 0) + 130).toFixed(2)} €
-      </div>
+<h3 style={{ marginTop: '30px', marginBottom: '10px', color: '#333', paddingLeft: '5px' }}>Popis svih računa</h3>
+      <table style={{ width: '100%', borderCollapse: 'collapse', background: 'white', marginBottom: '40px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+        <thead>
+          <tr style={{ background: '#eee', borderBottom: '2px solid #ccc' }}>
+            <th style={{ padding: '10px 15px', textAlign: 'left' }}>Br. računa</th>
+            <th style={{ padding: '10px 15px', textAlign: 'center' }}>Vrijeme</th>
+            <th style={{ padding: '10px 15px', textAlign: 'left' }}>Plaćanje</th>
+            <th style={{ padding: '10px 15px', textAlign: 'right' }}>Iznos</th>
+            <th style={{ padding: '10px 15px', textAlign: 'center' }}>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {dayReceipts.map((r) => {
+            const isStorno = r.status === 'STORNO' || r.status === 'RACUN_STORNIRAN';
+            return (
+              <tr key={r.id} style={{ borderBottom: '1px solid #eee', color: isStorno ? '#999' : '#333' }}>
+                <td style={{ padding: '10px 15px', fontWeight: '500' }}>{r.invoiceNumber}</td>
+                <td style={{ padding: '10px 15px', textAlign: 'center' }}>
+                  {new Date(r.createdAt).toLocaleTimeString("hr-HR", { hour: '2-digit', minute: '2-digit' })}
+                </td>
+                <td style={{ padding: '10px 15px' }}>{r.paymentType}</td>
+                <td style={{ padding: '10px 15px', textAlign: 'right', fontWeight: 'bold' }}>
+                  {parseFloat(r.brutto).toFixed(2)} €
+                </td>
+                <td style={{ padding: '10px 15px', textAlign: 'center', fontSize: '0.85rem' }}>
+                   {isStorno ? <span style={{color: '#d32f2f'}}>STORNO</span> : <span style={{color: '#388e3c'}}>OK</span>}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
 
-      <div style={{background: '#FF8C04', padding: '10px 15px', marginBottom: '20px', textAlign: 'right', fontWeight: '600', color: 'white', fontSize: '16px'}}>
-        Ukupno + Polog: {(grandTotal + 130).toFixed(2)} €
+      {/* print dio */}
+      <div style={{display: 'none'}}>
+        <div ref={receiptRef}>
+          <IzvjestajReceipt data={reportData} />
+        </div>
       </div>
-
       <div style={{display: 'none'}}>
         <div ref={receiptRef}>
           <IzvjestajReceipt data={reportData} />

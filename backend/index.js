@@ -132,20 +132,19 @@ app.get("/protected", requireAuth, (req, res) => {
 // ========== ARTICLES API ==========
 app.get("/api/articles", requireAuth, async (req, res) => {
   try {
-    // Admins see ALL articles (active and inactive)
-    // Regular users only see active articles from active categories
+
     const isAdmin = req.user.role === "ADMIN";
 
     const whereClause = isAdmin ? {} : {
       OR: [
-        { categoryId: null }, // Show articles with no category
+        { categoryId: null }, 
         {
           category: {
-            active: true // ONLY show if the linked category is active
+            active: true 
           }
         }
       ],
-      active: true // Only show active articles for non-admins
+      active: true
     };
 
     const articles = await prisma.article.findMany({
@@ -285,6 +284,8 @@ app.get('/api/receipts/current-session', async (req, res) => {
   }
 });
 
+// ========== RECEIPTS API UPDATES ==========
+
 app.get('/api/receipts/active-dates', async (req, res) => {
   try {
     const receipts = await prisma.receipt.findMany({
@@ -299,7 +300,7 @@ app.get('/api/receipts/active-dates', async (req, res) => {
       uniqueDates.add(d.toISOString().split('T')[0]);
     });
 
-    res.json(Array.from(uniqueDates));
+    res.json(Array.from(uniqueDates).sort());
   } catch (error) {
     res.status(500).json({ error: "Greška pri dohvaćanju datuma" });
   }
@@ -309,7 +310,7 @@ app.get('/api/receipts/range', async (req, res) => {
   const { from, to } = req.query;
 
   try {
-    // Od 6 gleda
+
     const startDate = new Date(from);
     startDate.setHours(6, 0, 0, 0);
 
@@ -324,9 +325,10 @@ app.get('/api/receipts/range', async (req, res) => {
           lte: endDate
         }
       },
-      include: { items: { include: { article: true } }, 
-    user: { select: { name: true } } 
-    },
+      include: { 
+        items: { include: { article: true } }, 
+        user: { select: { name: true } } 
+      },
       orderBy: { createdAt: 'asc' }
     });
 
@@ -341,7 +343,6 @@ app.get("/api/receipts/:id/print", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Fetch receipt with all details
     const receipt = await prisma.receipt.findUnique({
       where: { id },
       include: { 
@@ -354,7 +355,6 @@ app.get("/api/receipts/:id/print", requireAuth, async (req, res) => {
       return res.status(404).json({ error: "Receipt not found" });
     }
 
-    // Format receipt data for printing
     const printData = {
       num: receipt.invoiceNumber,
       payment: receipt.paymentType,
