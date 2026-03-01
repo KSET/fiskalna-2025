@@ -216,10 +216,14 @@ const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj, autoPrint }) 
     setPrintOrder(updatedOrder ?? order);
   }, [order]);
 
-  useEffect(() => {
+useEffect(() => {
     if (autoPrint && order) {
       shouldPrintRef.current = true;
-      setPrintOrder(order);
+      const timer = setTimeout(() => {
+        setPrintOrder(order);
+      }, 0);
+      
+      return () => clearTimeout(timer);
     }
   }, [autoPrint, order]);
 

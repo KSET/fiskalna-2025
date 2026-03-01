@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import "../../styles/Pages.css";
 
 export default function Artikli() {
@@ -18,28 +18,36 @@ export default function Artikli() {
     active: true,
   });
 
-const fetchArticles = useCallback(async () => {
-  try {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/articles`, { credentials: "include" });
-    const data = await response.json();
-    setArticles(data);
-  } catch (error) {
-    console.error("Error:", error);
-  }
-}, []);
+  const fetchArticles = useCallback(async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/articles`, { 
+        credentials: "include" 
+      });
+      const data = await response.json();
+      setArticles(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Error fetching articles:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchArticles();
 
-    (async () => {
+    const fetchCategories = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/categories`, { credentials: "include" });
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/categories`, { 
+          credentials: "include" 
+        });
         const data = await response.json();
-        setCategories(data);
+        setCategories(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("Error fetching categories:", error);
       }
-    })();
+    };
+
+    fetchCategories();
   }, [fetchArticles]); 
 
   const resetForm = () => {
@@ -291,7 +299,7 @@ const fetchArticles = useCallback(async () => {
                     onClick={() => handleDuplicate(article)}
                     className="icon-btn duplicate"
                     title="Dupliciraj"
-                    style={{ color: '#667eea', marginRight: '5px' }}
+                    style={{ color: '#667eea', marginRight: '5px', background: 'none', border: 'none', cursor: 'pointer' }}
                   >
                     <i className="fas fa-copy"></i>
                   </button>
@@ -299,6 +307,7 @@ const fetchArticles = useCallback(async () => {
                     onClick={() => handleEdit(article)}
                     className="icon-btn edit"
                     title="Uredi"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer' }}
                   >
                     <i className="fas fa-edit"></i>
                   </button>
@@ -306,6 +315,7 @@ const fetchArticles = useCallback(async () => {
                     onClick={() => handleDelete(article.id)}
                     className="icon-btn delete"
                     title="Obriši"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer' }}
                   >
                     <i className="fas fa-trash"></i>
                   </button>
