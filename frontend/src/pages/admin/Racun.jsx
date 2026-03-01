@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import { QRCodeSVG } from "qrcode.react";
 
 const Receipt = ({ order }) => {
@@ -20,7 +20,6 @@ const Receipt = ({ order }) => {
     0
   );
 
-  // RACUNANJE POREZNIH GRUPA
   const taxGroups = order.items.reduce((acc, item) => {
     const rate = Number(item.taxRate || 0);
     const brutto = parseFloat(item.price) * parseFloat(item.quantity);
@@ -161,7 +160,9 @@ const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj, autoPrint }) 
   const [printOrder, setPrintOrder] = useState(null);
   const shouldPrintRef = useRef(false);
 
-  const doPrint = () => {
+  const doPrint = useCallback(() => {
+    if (!receiptRef.current) return;
+
     let printFrame = document.getElementById("receipt-print-frame");
     if (!printFrame) {
       printFrame = document.createElement("iframe");
@@ -201,30 +202,34 @@ const ReceiptPrintButton = ({ order, onAfterPrint, onFiskaliziraj, autoPrint }) 
     doc.close();
 
     printFrame.contentWindow.focus();
-    setTimeout(() => {
+    
+    const timer = setTimeout(() => {
       printFrame.contentWindow.print();
-      if (onAfterPrint) setTimeout(onAfterPrint, 500);
+      if (onAfterPrint) onAfterPrint();
     }, 500);
-  };
 
-  const printaj = (updatedOrder) => {
+    return () => clearTimeout(timer);
+  }, [onAfterPrint]);
+
+  const printaj = useCallback((updatedOrder) => {
     shouldPrintRef.current = true;
     setPrintOrder(updatedOrder ?? order);
-  };
+  }, [order]);
 
   useEffect(() => {
     if (autoPrint && order) {
       shouldPrintRef.current = true;
-      setTimeout(() => setPrintOrder(order), 0);
+      setPrintOrder(order);
     }
   }, [autoPrint, order]);
 
   useEffect(() => {
     if (shouldPrintRef.current && printOrder) {
       shouldPrintRef.current = false;
-      setTimeout(doPrint, 50);
+      const timer = setTimeout(doPrint, 50);
+      return () => clearTimeout(timer);
     }
-  }, [printOrder]);
+  }, [printOrder, doPrint]);
 
   const handleClick = () => {
     if (onFiskaliziraj) {
