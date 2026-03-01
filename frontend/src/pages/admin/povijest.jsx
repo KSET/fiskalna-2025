@@ -4,7 +4,6 @@ import * as XLSX from "xlsx";
 export default function Povijest() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [filter, setFilter] = useState("");
 
   const getSessionDate = (dateObj) => {
