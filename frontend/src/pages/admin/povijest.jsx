@@ -45,6 +45,7 @@ export default function Povijest() {
     const excelData = filteredTransactions.map(t => ({
       "Broj Računa": t.receipt?.invoiceNumber || "N/A",
       "Iznos (€)": parseFloat(t.amount).toFixed(2),
+      "Plaćanje": t.receipt?.paymentType || "N/A",
       "Status": t.receipt?.status === 'STORNO' ? 'Storno' : t.receipt?.status === 'RACUN_STORNIRAN' ? 'Otkazano' : 'Gotovo',
       "Prodavač": t.user?.name || "Nepoznato",
       "Datum": new Date(t.createdAt).toLocaleDateString("hr-HR"),
@@ -124,6 +125,7 @@ export default function Povijest() {
             <tr style={{ backgroundColor: '#edf2f7', textAlign: 'left' }}>
               <th style={thStyle}>Broj Računa</th>
               <th style={thStyle}>Iznos</th>
+              <th style={thStyle}>Plaćanje</th>
               <th style={thStyle}>Status</th>
               <th style={thStyle}>Prodavač</th>
               <th style={thStyle}>Datum</th>
@@ -135,6 +137,7 @@ export default function Povijest() {
               <tr key={t.id} style={{ borderBottom: '1px solid #edf2f7' }}>
                 <td style={tdStyle}>{t.receipt?.invoiceNumber || "N/A"}</td>
                 <td style={{ ...tdStyle, fontWeight: '600' }}>{parseFloat(t.amount).toFixed(2)} €</td>
+                <td style={tdStyle}>{t.receipt?.paymentType || "N/A"}</td>
                 <td style={tdStyle}>
                   <StatusBadge status={t.receipt?.status} />
                 </td>
