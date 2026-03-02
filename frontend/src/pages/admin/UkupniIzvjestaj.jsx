@@ -98,7 +98,27 @@ export default function UkupniIzvjestaj() {
   const [activeDates, setActiveDates] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
   const receiptRef = useRef();
+  const handleStorno = async (receiptId) => {
+    if (!window.confirm("Jeste li sigurni da želite stornirati ovaj račun?")) return;
 
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/receipts/${receiptId}/storno`, {
+        method: 'PUT',
+        credentials: "include",
+      });
+
+      if (res.ok) {
+        alert("Račun uspješno storniran.");
+        handleDateClick(new Date(selectedDate));
+      } else {
+        const errData = await res.json();
+        alert(`Greška: ${errData.message || 'Neuspjelo storniranje'}`);
+      }
+    } catch (error) {
+      console.error("Storno error:", error);
+      alert("Došlo je do greške na mreži.");
+    }
+  };
   useEffect(() => {
     fetch(`${import.meta.env.VITE_API_URL}/api/receipts/active-dates`, { credentials: "include" })
       .then(res => res.json())
@@ -382,9 +402,11 @@ export default function UkupniIzvjestaj() {
         </thead>
         <tbody>
           {dayReceipts.map((r) => {
-            const isStorno = r.status === 'STORNO' || r.status === 'RACUN_STORNIRAN';
+            const isStorno = r.status === 'STORNO';
+            const isCancelled = r.status === 'RACUN_STORNIRAN';
+
             return (
-              <tr key={r.id} style={{ borderBottom: '1px solid #eee', color: isStorno ? '#999' : '#333' }}>
+              <tr key={r.id} style={{ borderBottom: '1px solid #eee', color: (isStorno || isCancelled) ? '#999' : '#333' }}>
                 <td style={{ padding: '10px 15px', fontWeight: '500' }}>{r.invoiceNumber}</td>
                 <td style={{ padding: '10px 15px', textAlign: 'center' }}>
                   {new Date(r.createdAt).toLocaleTimeString("hr-HR", { hour: '2-digit', minute: '2-digit' })}
@@ -394,7 +416,30 @@ export default function UkupniIzvjestaj() {
                   {parseFloat(r.brutto).toFixed(2)} €
                 </td>
                 <td style={{ padding: '10px 15px', textAlign: 'center', fontSize: '0.85rem' }}>
-                   {isStorno ? <span style={{color: '#d32f2f'}}>STORNO</span> : <span style={{color: '#388e3c'}}>OK</span>}
+                  {isCancelled ? (
+                    <span style={{color: '#ef6c00', fontWeight: 'bold'}}>OTKAZANO</span>
+                  ) : isStorno ? (
+                    <span style={{color: '#d32f2f', fontWeight: 'bold'}}>STORNO</span>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                      <span style={{color: '#388e3c'}}>OK</span>
+                      <button 
+                        onClick={() => handleStorno(r.id)}
+                        style={{
+                          background: '#fee2e2',
+                          color: '#b91c1c',
+                          border: '1px solid #f87171',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '11px',
+                          fontWeight: 'bold'
+                        }}
+                      >
+                        Storniraj
+                      </button>
+                    </div>
+                  )}
                 </td>
               </tr>
             );
