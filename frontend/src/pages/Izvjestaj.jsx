@@ -234,7 +234,7 @@ return (
         <thead>
           <tr style={{background: '#f2f2f2'}}>
             <th style={{padding: '8px 15px', textAlign: 'left'}}>Način plaćanja</th>
-            <th style={{padding: '8px 15px', textAlign: 'center'}}>Br. računa</th>
+            <th style={{padding: '8px 15px', textAlign: 'center'}}>Kol. računa</th>
             <th style={{padding: '8px 15px', textAlign: 'right'}}>Iznos</th>
           </tr>
         </thead>

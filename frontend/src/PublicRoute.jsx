@@ -13,7 +13,7 @@ export default function PublicRoute({ children }) {
 
   if (user === undefined) return null;
 
-  if (user) return <Navigate to="/home" />;
+  if (user) return <Navigate to="/prodaja" />;
 
   return children;
 }

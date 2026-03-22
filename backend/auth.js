@@ -28,7 +28,7 @@ passport.use(
     async (accessToken, refreshToken, profile, done) => {
       try {
         const email = profile.emails[0].value;
-        const adminEmails = ["tadija75@gmail.com", "lorenaivanisevic@gmail.com", "pavle.ergovic@kset.org"];
+        const adminEmails = ["tadija75@gmail.com", "lorenaivanisevic@gmail.com", "pavle.ergovic@kset.org","doria.herceg@kset.org"];
         const isAdmin = adminEmails.includes(email);
 
         console.log("Login attempt:", email, "| Is Admin List:", isAdmin);

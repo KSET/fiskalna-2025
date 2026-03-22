@@ -105,7 +105,7 @@ app.get("/oauth/callback", (req, res, next) => {
       if (err) {
         return res.redirect(`${frontend}/?error=login_error`);
       }
-      res.redirect(`${frontend}/home`);
+      res.redirect(`${frontend}/prodaja`);
     });
   })(req, res, next);
 });

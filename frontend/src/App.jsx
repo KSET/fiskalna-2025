@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
-import Home from "./pages/Home";
 import ProtectedRoute from "./ProtectedRoute";
 import PublicRoute from "./PublicRoute";
 import MainLayout from "./layouts/MainLayout";
@@ -25,17 +24,6 @@ export default function App() {
             </PublicRoute>
           }
         />
-        <Route
-          path="/home"
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <Home />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
-
         {/* Main Application Routes */}
         <Route
           path="/prodaja"
