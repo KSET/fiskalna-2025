@@ -201,6 +201,11 @@
   opacity: 0.6;
 }
 
+.data-table tbody tr.active-location {
+  background-color: #f0f9f0;
+  font-weight: 500;
+}
+
 .data-table tbody tr.cancelled,
 .data-table tbody tr.storno {
   color: #dc3545;

@@ -15,9 +15,13 @@
  * @param {string} order.currency - Currency code (e.g. "EUR")
  * @param {Array}  order.items - Array of receipt items
  */
-export async function handleOrderFiscalization(order) {
+export async function handleOrderFiscalization(order, options = {}) {
   if (!order.paymentType) {
     throw new Error(`Order ${order.code} is missing paymentType. Must be KARTICA or GOTOVINA.`);
+  }
+  const { firaApiKey, prodajnoMjestoNaziv } = options;
+  if (!firaApiKey) {
+    throw new Error("FIRA API ključ nije proslijeđen. Odaberite prodajno mjesto u admin postavkama.");
   }
 
   // Skip free orders - no invoice needed
@@ -108,7 +112,7 @@ export async function handleOrderFiscalization(order) {
     lineItems,
   };
 
-  console.log(`Sending to FIRA: ${JSON.stringify(data, null, 2)}`);
+  console.log(`Sending to FIRA [${prodajnoMjestoNaziv || "unknown"}]: ${JSON.stringify(data, null, 2)}`);
 
   // MOCK response (comment out when using real FIRA)
   // const mockResponse = {

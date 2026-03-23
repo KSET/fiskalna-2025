@@ -98,6 +98,7 @@ model Receipt {
   internalNote          String?
   discountValue         Decimal  @db.Decimal(10, 2) @default(0)
   shippingCost          Decimal  @db.Decimal(10, 2) @default(0)
+  prodajnoMjestoNaziv   String?
   status                ReceiptStatus @default(RACUN)
   items                 ReceiptItem[]
   transaction           Transaction?
@@ -184,4 +185,11 @@ model ProdajnoMjesto {
   paymentDevice   String
   firaApiKey      String
   active          Boolean  @default(true)
+  appSettings     AppSettings[]
+}
+
+model AppSettings {
+  id                       Int              @id @default(1)
+  selectedProdajnoMjestoId Int?
+  prodajnoMjesto           ProdajnoMjesto?  @relation(fields: [selectedProdajnoMjestoId], references: [id])
 }

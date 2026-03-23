@@ -142,7 +142,7 @@ export default function Racuni() {
                   <td>
                     {new Date(receipt.createdAt).toLocaleTimeString("hr-HR", {hour: '2-digit', minute: '2-digit', second: '2-digit'})}
                   </td>
-                  <td>{receipt.prodajnoMjesto?.name || "N/A"}</td>
+                  <td>{receipt.prodajnoMjestoNaziv || "N/A"}</td>
                   <td>{receipt.paymentType}</td>
                   <td><span className="currency">{parseFloat(receipt.brutto).toFixed(2)}</span></td>
                   <td>

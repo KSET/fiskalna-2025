@@ -427,6 +427,22 @@ app.post("/api/receipts", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "Invalid paymentType. Must be GOTOVINA, KARTICA, or TRANSAKCIJSKI" });
     }
 
+    // Validate active prodajno mjesto exists BEFORE creating anything in DB
+    const appSettings = await prisma.appSettings.findUnique({
+      where: { id: 1 },
+      include: { prodajnoMjesto: true },
+    });
+    if (!appSettings?.prodajnoMjesto) {
+      return res.status(400).json({ error: "Nije odabrano prodajno mjesto. Odaberite prodajno mjesto u admin postavkama." });
+    }
+    let firaApiKey;
+    try {
+      firaApiKey = decrypt(appSettings.prodajnoMjesto.firaApiKey);
+      if (!firaApiKey) throw new Error("Prazan ključ");
+    } catch {
+      return res.status(500).json({ error: "Greška pri dešifriranju API ključa prodajnog mjesta." });
+    }
+
     // Create billing address if provided
     let billingAddressId = null;
     if (billingAddress) {
@@ -473,6 +489,7 @@ app.post("/api/receipts", requireAuth, async (req, res) => {
         internalNote,
         discountValue,
         shippingCost,
+        prodajnoMjestoNaziv: appSettings.prodajnoMjesto.name,
         items: {
           create: items.map((item) => ({
             name: item.name,
@@ -509,7 +526,7 @@ app.post("/api/receipts", requireAuth, async (req, res) => {
       currency: receipt.currency,
       paymentType: receipt.paymentType,
       items: receipt.items,
-    });
+    }, { firaApiKey, prodajnoMjestoNaziv: appSettings.prodajnoMjesto.name });
 
     if (firaResult && firaResult.invoiceNumber) {
       try {
@@ -547,7 +564,7 @@ app.post("/api/receipts", requireAuth, async (req, res) => {
     if (Math.abs(calculatedBrutto - brutto) > 0.01) {
         return res.status(400).json({ error: "Total amount mismatch." });
     }
-    res.status(201).json(receipt);
+    res.status(201).json({ ...receipt, prodajnoMjestoNaziv: appSettings.prodajnoMjesto.name });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -848,14 +865,62 @@ app.post("/api/reports", requireAuth, async (req, res) => {
 });
 
 
+// ========== APP SETTINGS API ==========
+
+// GET trenutno odabrano prodajno mjesto
+app.get('/api/settings/active-location', requireAuth, async (req, res) => {
+  if (req.user.role !== "ADMIN") return res.status(403).json({ error: "Unauthorized" });
+  try {
+    const settings = await prisma.appSettings.findUnique({
+      where: { id: 1 },
+      include: { prodajnoMjesto: true },
+    });
+    if (!settings || !settings.prodajnoMjesto) {
+      return res.json({ selectedProdajnoMjestoId: null, prodajnoMjesto: null });
+    }
+    res.json({
+      selectedProdajnoMjestoId: settings.selectedProdajnoMjestoId,
+      prodajnoMjesto: { ...settings.prodajnoMjesto, firaApiKey: "********" },
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Greška" });
+  }
+});
+
+// PUT odabir aktivnog prodajnog mjesta
+app.put('/api/settings/active-location', requireAuth, async (req, res) => {
+  if (req.user.role !== "ADMIN") return res.status(403).json({ error: "Unauthorized" });
+  const { prodajnoMjestoId } = req.body;
+  try {
+    const settings = await prisma.appSettings.upsert({
+      where: { id: 1 },
+      update: { selectedProdajnoMjestoId: prodajnoMjestoId ?? null },
+      create: { id: 1, selectedProdajnoMjestoId: prodajnoMjestoId ?? null },
+      include: { prodajnoMjesto: true },
+    });
+    res.json({
+      selectedProdajnoMjestoId: settings.selectedProdajnoMjestoId,
+      prodajnoMjesto: settings.prodajnoMjesto
+        ? { ...settings.prodajnoMjesto, firaApiKey: "********" }
+        : null,
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Greška pri ažuriranju" });
+  }
+});
+
 // GET all prodajna mjesta
 app.get('/api/prodajna-mjesta', async (req, res) => {
   try {
     const locations = await prisma.prodajnoMjesto.findMany();
-    const safeLocations = locations.map(loc => ({
-      ...loc,
-      firaApiKey: "********" // Don't send the real key back to the UI!
-    }));
+    const safeLocations = locations.map(loc => {
+      let maskedKey = "********";
+      try {
+        const real = decrypt(loc.firaApiKey);
+        maskedKey = `****${real.slice(-4)}`;
+      } catch { /* leave as ******** if decryption fails */ }
+      return { ...loc, firaApiKey: maskedKey };
+    });
     res.json(safeLocations);
   } catch (error) {
     res.status(500).json({ error: "Greška" });
@@ -882,7 +947,7 @@ app.post('/api/prodajna-mjesta', async (req, res) => {
       }
     });
 
-    res.json(newLocation);
+    res.json({ ...newLocation, firaApiKey: "********" });
   } catch (error) {
     // THIS LOG IS CRUCIAL: Check your terminal for this output!
     console.error("CRITICAL BACKEND ERROR:", error.message);
@@ -899,11 +964,15 @@ app.put('/api/prodajna-mjesta/:id', async (req, res) => {
   const { id } = req.params;
   const { name, businessSpace, paymentDevice, firaApiKey, active } = req.body;
   try {
+    const data = { name, businessSpace, paymentDevice, active };
+    if (firaApiKey && firaApiKey !== "********") {
+      data.firaApiKey = encrypt(firaApiKey);
+    }
     const updated = await prisma.prodajnoMjesto.update({
       where: { id: parseInt(id) },
-      data: { name, businessSpace, paymentDevice, firaApiKey, active }
+      data,
     });
-    res.json(updated);
+    res.json({ ...updated, firaApiKey: "********" });
   } catch (error) {
     res.status(500).json({ error: "Greška pri ažuriranju" });
   }

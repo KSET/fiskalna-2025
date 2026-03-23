@@ -7,6 +7,8 @@ export default function ProdajnaMjesta() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [firaApiUrl, setFiraApiUrl] = useState("");
+  const [activeLocationId, setActiveLocationId] = useState(null);
+  const [savingActive, setSavingActive] = useState(false);
   
   const [formData, setFormData] = useState({
     name: "",
@@ -49,6 +51,11 @@ export default function ProdajnaMjesta() {
     fetch(`${import.meta.env.VITE_API_URL}/api/config`, { credentials: "include" })
       .then(r => r.json())
       .then(data => setFiraApiUrl(data.firaApiKey || ""))
+      .catch(() => {});
+
+    fetch(`${import.meta.env.VITE_API_URL}/api/settings/active-location`, { credentials: "include" })
+      .then(r => r.json())
+      .then(data => setActiveLocationId(data.selectedProdajnoMjestoId ?? null))
       .catch(() => {});
   }, []);
 
@@ -131,6 +138,25 @@ export default function ProdajnaMjesta() {
       refreshData();
     } catch (error) {
       console.error("Error toggling status:", error);
+    }
+  };
+
+  const handleSelectActive = async (id) => {
+    setSavingActive(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/settings/active-location`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ prodajnoMjestoId: id }),
+      });
+      if (response.ok) {
+        setActiveLocationId(id);
+      }
+    } catch (error) {
+      console.error("Error setting active location:", error);
+    } finally {
+      setSavingActive(false);
     }
   };
 
@@ -231,6 +257,25 @@ export default function ProdajnaMjesta() {
         </form>
       )}
 
+      <div style={{ background: activeLocationId === null ? "#fff3cd" : "#f0f9f0", border: `1px solid ${activeLocationId === null ? "#ffc107" : "#4caf50"}`, borderRadius: "6px", padding: "14px 16px", marginBottom: "20px", display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+        <span style={{ fontWeight: 600, color: "#333", whiteSpace: "nowrap" }}>Aktivno prodajno mjesto:</span>
+        <select
+          value={activeLocationId ?? ""}
+          onChange={(e) => handleSelectActive(Number(e.target.value))}
+          disabled={savingActive}
+          style={{ padding: "6px 10px", borderRadius: "4px", border: "1px solid #ccc", fontSize: "0.95rem", minWidth: "200px" }}
+        >
+          {activeLocationId === null && <option value="" disabled>— odaberite —</option>}
+          {locations.map(loc => (
+            <option key={loc.id} value={loc.id}>{loc.name}{!loc.active ? " (neaktivno)" : ""}</option>
+          ))}
+        </select>
+        {savingActive && <span style={{ color: "#888", fontSize: "0.85rem" }}>Spremanje...</span>}
+        {!savingActive && activeLocationId === null && (
+          <span style={{ color: "#856404", fontSize: "0.85rem" }}>Prodaja nece raditi dok ne odaberete prodajno mjesto.</span>
+        )}
+      </div>
+
       <div className="table-container">
         <table className="data-table">
           <thead>
@@ -238,40 +283,29 @@ export default function ProdajnaMjesta() {
               <th>Ime</th>
               <th>Prostor</th>
               <th>Uređaj</th>
+              <th>API Ključ</th>
               <th>Status</th>
               <th>Akcije</th>
             </tr>
           </thead>
           <tbody>
             {locations.map(loc => (
-              <tr key={loc.id} className={!loc.active ? "inactive" : ""}>
+              <tr key={loc.id} className={!loc.active ? "inactive" : activeLocationId === loc.id ? "active-location" : ""}>
                 <td>{loc.name}</td>
                 <td><code>{loc.businessSpace}</code></td>
                 <td><code>{loc.paymentDevice}</code></td>
+                <td><code>{loc.firaApiKey || "-"}</code></td>
                 <td>
                   <span className={`badge-${loc.active ? "success" : "danger"}`}>
                     {loc.active ? "Aktivno" : "Neaktivno"}
                   </span>
                 </td>
                 <td className="actions">
-                  <button
-                    onClick={() => handleEdit(loc)}
-                    className="btn-small btn-primary"
-                  >
-                    Uredi
-                  </button>
-                  <button
-                    onClick={() => toggleActive(loc.id, loc.active)}
-                    className={`btn-small ${loc.active ? "btn-warning" : "btn-info"}`}
-                  >
+                  <button onClick={() => handleEdit(loc)} className="btn-small btn-primary">Uredi</button>
+                  <button onClick={() => toggleActive(loc.id, loc.active)} className={`btn-small ${loc.active ? "btn-warning" : "btn-info"}`}>
                     {loc.active ? "Deaktiviraj" : "Aktiviraj"}
                   </button>
-                  <button
-                    onClick={() => handleDelete(loc.id)}
-                    className="btn-small btn-danger"
-                  >
-                    Obriši
-                  </button>
+                  <button onClick={() => handleDelete(loc.id)} className="btn-small btn-danger">Obriši</button>
                 </td>
               </tr>
             ))}

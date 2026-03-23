@@ -14,8 +14,8 @@ export default function Prodaja() {
   const [categories, setCategories] = useState([]);
   const [selectedItems, setSelectedItems] = useState([]);
   const [paymentMethod, setPaymentMethod] = useState("Gotovina");
-  const [locations, setLocations] = useState([]);
   const [selectedLocationId, setSelectedLocationId] = useState("");
+  const [activeLocation, setActiveLocation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchParams] = useSearchParams();
   const [offlineCount, setOfflineCount] = useState(0);
@@ -38,22 +38,27 @@ export default function Prodaja() {
     fetchCategories();
 
     const fetchLocations = async () => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/prodajna-mjesta`, { credentials: "include" });
-      const data = await response.json();
-      if (response.ok && Array.isArray(data)) {
-        setLocations(data.filter(loc => loc.active));
-        if (data.length > 0 && !selectedLocationId) {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/prodajna-mjesta`, { credentials: "include" });
+        const data = await response.json();
+        if (response.ok && Array.isArray(data) && data.length > 0 && !selectedLocationId) {
           setSelectedLocationId(String(data[0].id));
         }
-      } else {
-        setLocations([]);
-      }
-    } catch {
-      setLocations([]);
-    }
+      } catch { /* ignore */ }
     };
+
+    const fetchActiveLocation = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/settings/active-location`, { credentials: "include" });
+        const data = await response.json();
+        setActiveLocation(data.prodajnoMjesto ?? null);
+      } catch {
+        setActiveLocation(null);
+      }
+    };
+
     fetchLocations();
+    fetchActiveLocation();
   }, [selectedLocationId]);
 
   const fetchArticles = async () => {
@@ -197,6 +202,14 @@ export default function Prodaja() {
         return `https://porezna.gov.hr/rn?jir=${jir}&datv=${datv}&izn=${iznFormatted}`;
       };
 
+      if (receipt.prodajnoMjestoNaziv && activeLocation?.name !== receipt.prodajnoMjestoNaziv) {
+        try {
+          const locRes = await fetch(`${import.meta.env.VITE_API_URL}/api/settings/active-location`, { credentials: "include" });
+          const locData = await locRes.json();
+          setActiveLocation(locData.prodajnoMjesto ?? null);
+        } catch { /* ignore */ }
+      }
+
       printFunction({
         num: receipt.invoiceNumber || receipt.receiptNumber,
         payment: paymentMethod,
@@ -207,7 +220,7 @@ export default function Prodaja() {
         tax: receipt.taxValue ?? totalTax,
         jir: receipt.jir ?? "",
         zki: receipt.zki ?? "",
-        location: locations.find((loc) => String(loc.id) === String(selectedLocationId))?.name || "",
+        location: receipt.prodajnoMjestoNaziv || activeLocation?.name || "",
         link: buildPoreznaLink(receipt.jir, receipt.invoiceDate || receipt.createdAt || new Date(), receipt.brutto ?? totalBrutto),
         phone: "0916043415",
         email: "info@kset.org",
@@ -340,22 +353,11 @@ export default function Prodaja() {
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <h1 style={{ margin: 0 }}>
-            Prodaja
-          </h1>
-          <label style={{ fontSize: '14px', color: '#333' }}>
-            Prodajno mjesto:
-            <select
-              value={selectedLocationId}
-              onChange={(e) => setSelectedLocationId(e.target.value)}
-              style={{ marginLeft: '8px', padding: '5px 8px', borderRadius: '4px', border: '1px solid #ccc' }}
-            >
-              <option value="">(nije odabrano)</option>
-              {locations.map(loc => (
-                <option key={loc.id} value={loc.id}>{loc.name} ({loc.businessSpace})</option>
-              ))}
-            </select>
-          </label>
+          <h1 style={{ margin: 0 }}>Prodaja</h1>
+          {activeLocation
+            ? <span style={{ fontSize: '0.9rem', color: '#fff', background: '#e67e22', padding: '4px 10px', borderRadius: '20px' }}>Prodajno mjesto: {activeLocation.name}</span>
+            : <span style={{ fontSize: '0.85rem', color: '#c0392b', background: '#fdecea', padding: '4px 10px', borderRadius: '20px' }}>Nije odabrano prodajno mjesto</span>
+          }
         </div>
         {offlineCount > 0 && (
             <span style={{color: 'red', fontSize: '14px', marginLeft: '10px'}}> 
