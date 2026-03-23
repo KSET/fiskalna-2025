@@ -98,7 +98,6 @@ export default function UkupniIzvjestaj() {
   const [loading, setLoading] = useState(false);
   const [activeDates, setActiveDates] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
-  const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [dateRange, setDateRange] = useState([null, null]);
   const [firstDateClick, setFirstDateClick] = useState(null); // Track first click for range selection
   const receiptRef = useRef();
@@ -183,51 +182,7 @@ export default function UkupniIzvjestaj() {
     //console.log("RANGE DATUMA:", dateRange);
   }, [dateRange]);
 
-const handleCalendarChange = (dates) => {
-  
-  if (!dates) {
-    setDateRange([null, null]);
-    return;
-  }
-
-  if (Array.isArray(dates)) {
-    //console.log("Array detected - dates[0]:", dates[0], "dates[1]:", dates[1]);
-    // If end date is null (first click of range), auto-complete with start date
-    if (dates[0] && !dates[1]) {
-      //console.log("Auto-completing single date selection");
-      setDateRange([dates[0], dates[0]]);
-    } else {
-      //console.log("Setting as-is:", dates);
-      setDateRange(dates);
-    }
-  } else {
-
-    setDateRange([dates, dates]);
-  }
-};
-
-  const handleDateClick = async (date) => {
-    setLoading(true);
-    const offset = date.getTimezoneOffset();
-    const adjustedDate = new Date(date.getTime() - (offset * 60 * 1000));
-    const dateStr = adjustedDate.toISOString().split('T')[0];
-
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/receipts/range?from=${dateStr}&to=${dateStr}`, { 
-        credentials: "include" 
-      });
-      const data = await res.json();
-      setReceipts(Array.isArray(data) ? data : []);
-      setSelectedDate(dateStr);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      setReceipts([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-const handleViewTransactions = async () => {
+  const handleViewTransactions = async () => {
   //console.log("Button clicked! Current dateRange:", dateRange);
   //console.log("dateRange[0]:", dateRange[0], "dateRange[1]:", dateRange[1]);
   

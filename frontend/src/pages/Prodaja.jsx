@@ -35,11 +35,9 @@ export default function Prodaja() {
     const offline = JSON.parse(localStorage.getItem("offline_receipts") || "[]");
     setOfflineCount(offline.length);
     fetchArticles();
-    fetchLocations();
     fetchCategories();
-  }, []);
 
-  const fetchLocations = async () => {
+    const fetchLocations = async () => {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/prodajna-mjesta`, { credentials: "include" });
       const data = await response.json();
@@ -54,7 +52,9 @@ export default function Prodaja() {
     } catch {
       setLocations([]);
     }
-  };
+    };
+    fetchLocations();
+  }, []);
 
   const fetchArticles = async () => {
     try {

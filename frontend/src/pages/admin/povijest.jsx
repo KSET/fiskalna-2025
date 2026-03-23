@@ -551,6 +551,5 @@ function StatusBadge({ status }) {
 
 const thStyle = { padding: '15px', fontSize: '14px', color: '#4a5568', textTransform: 'uppercase', letterSpacing: '0.05em' };
 const tdStyle = { padding: '15px', fontSize: '15px' };
-const dateInputStyle = { padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '14px', cursor: 'pointer' };
 const secondaryButtonStyle = { backgroundColor: '#edf2f7', border: '1px solid #cbd5e0', padding: '8px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', color: '#4a5568' };
 const excelButtonStyle = { backgroundColor: '#2f855a', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' };
