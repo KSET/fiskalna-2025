@@ -54,7 +54,7 @@ export default function Prodaja() {
     }
     };
     fetchLocations();
-  }, []);
+  }, [selectedLocationId]);
 
   const fetchArticles = async () => {
     try {

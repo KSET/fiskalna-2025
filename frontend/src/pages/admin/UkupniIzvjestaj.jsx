@@ -315,7 +315,6 @@ export default function UkupniIzvjestaj() {
               value={dateRange}
               onChange={() => {}} // Prevent default onChange behavior
               onClickDay={handleCalendarDayClick}
-              onActiveStartDateChange={({ activeStartDate }) => setCalendarMonth(activeStartDate)}
               tileClassName={({ date, view }) => {
                 const now = new Date();
                 const isToday = date.getDate() === now.getDate() && 
