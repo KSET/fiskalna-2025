@@ -178,7 +178,7 @@ export default function Kategorije() {
           <thead>
             <tr>
               <th>Naziv</th>
-              <th>Status</th>
+              <th>Aktivna</th>
               <th>Akcije</th>
             </tr>
           </thead>
@@ -187,28 +187,29 @@ export default function Kategorije() {
               <tr key={category.id} className={!category.active ? "inactive" : ""}>
                 <td>{category.name}</td>
                 <td>
-                  <span className={`badge-${category.active ? "success" : "danger"}`}>
-                    {category.active ? "Aktivna" : "Neaktivna"}
-                  </span>
+                  <label className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={category.active}
+                      onChange={() => toggleActive(category.id, category.active)}
+                    />
+                    <span className="toggle-slider"></span>
+                  </label>
                 </td>
                 <td className="actions">
                   <button
                     onClick={() => handleEdit(category)}
-                    className="btn-small btn-primary"
+                    className="icon-btn edit"
+                    title="Uredi"
                   >
-                    Uredi
-                  </button>
-                  <button
-                    onClick={() => toggleActive(category.id, category.active)}
-                    className={`btn-small ${category.active ? "btn-warning" : "btn-info"}`}
-                  >
-                    {category.active ? "Deaktiviraj" : "Aktiviraj"}
+                    <i className="fas fa-edit"></i>
                   </button>
                   <button
                     onClick={() => handleDelete(category.id)}
-                    className="btn-small btn-danger"
+                    className="icon-btn delete"
+                    title="Obriši"
                   >
-                    Obriši
+                    <i className="fas fa-trash"></i>
                   </button>
                 </td>
               </tr>

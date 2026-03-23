@@ -284,7 +284,7 @@ export default function ProdajnaMjesta() {
               <th>Prostor</th>
               <th>Uređaj</th>
               <th>API Ključ</th>
-              <th>Status</th>
+              <th>Aktivno</th>
               <th>Akcije</th>
             </tr>
           </thead>
@@ -296,16 +296,22 @@ export default function ProdajnaMjesta() {
                 <td><code>{loc.paymentDevice}</code></td>
                 <td><code>{loc.firaApiKey || "-"}</code></td>
                 <td>
-                  <span className={`badge-${loc.active ? "success" : "danger"}`}>
-                    {loc.active ? "Aktivno" : "Neaktivno"}
-                  </span>
+                  <label className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={loc.active}
+                      onChange={() => toggleActive(loc.id, loc.active)}
+                    />
+                    <span className="toggle-slider"></span>
+                  </label>
                 </td>
                 <td className="actions">
-                  <button onClick={() => handleEdit(loc)} className="btn-small btn-primary">Uredi</button>
-                  <button onClick={() => toggleActive(loc.id, loc.active)} className={`btn-small ${loc.active ? "btn-warning" : "btn-info"}`}>
-                    {loc.active ? "Deaktiviraj" : "Aktiviraj"}
+                  <button onClick={() => handleEdit(loc)} className="icon-btn edit" title="Uredi">
+                    <i className="fas fa-edit"></i>
                   </button>
-                  <button onClick={() => handleDelete(loc.id)} className="btn-small btn-danger">Obriši</button>
+                  <button onClick={() => handleDelete(loc.id)} className="icon-btn delete" title="Obriši">
+                    <i className="fas fa-trash"></i>
+                  </button>
                 </td>
               </tr>
             ))}
