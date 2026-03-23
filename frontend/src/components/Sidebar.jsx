@@ -80,7 +80,7 @@ export default function Sidebar() {
                 isActive("/admin/ukupni-izvjestaj") ? "active" : ""
               }`}
             >
-              Ukupni izvještaj
+              Arhiva izvještaja
             </Link>
             <Link
               to="/admin/artikli"
@@ -108,7 +108,7 @@ export default function Sidebar() {
                 isActive("/admin/povijest") ? "active" : ""
               }`}
             >
-              Povijest transakcija
+              Povijest računa
             </Link>
             <Link
               to="/admin/korisnici"

@@ -3,7 +3,7 @@ import "../styles/Pages.css";
 
 const fmtDate = (d) => d ? d.toLocaleDateString("hr-HR", { day: '2-digit', month: '2-digit', year: 'numeric' }) + " " + d.toLocaleTimeString("hr-HR", { hour: '2-digit', minute: '2-digit' }) : "N/A";
 
-const IzvjestajReceipt = ({ data, pologValue }) => {
+const IzvjestajReceipt = ({ data, pologValue, paymentStornoCounts }) => {
   const W = 42;
   const line = "─".repeat(W);
 
@@ -36,9 +36,10 @@ const IzvjestajReceipt = ({ data, pologValue }) => {
 
   const paymentLines = Object.entries(articlesByPayment).map(([method, articles]) => {
     const count = paymentCounts[method] || 0;
+    const stornoCount = paymentStornoCounts?.[method] || 0;
     const totalSum = Object.values(articles).reduce((sum, item) => sum + item.total, 0);
-    const methodLabel = rpad(method, COL_NAME);
-    return methodLabel + lpad(String(count), COL_QTY) + " " + lpad(totalSum.toFixed(2) + " \u20ac", COL_TOT);
+    const methodLabel = rpad(method, COL_NAME - 5);
+    return methodLabel + lpad(String(count), 3) + "/" + lpad(String(stornoCount), 2) + " " + lpad(totalSum.toFixed(2) + " \u20ac", COL_TOT);
   }).join("\n");
 
   const firstMethod = Object.keys(paymentTotals)[0];
@@ -75,7 +76,7 @@ ${articleLines}
 ${line}
 ${rpad("UKUPNO", W - COL_TOT - 1)}${lpad(grandTotal.toFixed(2) + " \u20ac", COL_TOT + 1)}
 ${line}
-${rpad("Način plaćanja", COL_NAME)}${lpad("Kol.", COL_QTY)} ${lpad("Iznos", COL_TOT)}
+${rpad("Način plaćanja", COL_NAME - 5)}${lpad("Kol.", 3)}/${lpad("St.", 2)} ${lpad("Iznos", COL_TOT)}
 ${line}
 ${paymentLines}
 ${line}
@@ -138,10 +139,19 @@ export default function Izvjestaj() {
   const articlesByPayment = {};
   const allArticles = {};
   const paymentCounts = {};
+  const paymentStornoCounts = {};
 
-  positiveReceipts.forEach(receipt => {
-    const method = receipt.paymentType;
-    paymentCounts[method] = (paymentCounts[method] || 0) + 1;
+  // Broji samo RACUN i STORNO (isključuje RACUN_STORNIRAN)
+  dayReceipts.forEach(receipt => {
+    if (receipt.status !== 'RACUN_STORNIRAN') {
+      const method = receipt.paymentType;
+      paymentCounts[method] = (paymentCounts[method] || 0) + 1;
+      
+      // Broji samo STORNO
+      if (receipt.status === 'STORNO') {
+        paymentStornoCounts[method] = (paymentStornoCounts[method] || 0) + 1;
+      }
+    }
   });
 
   dayReceipts.forEach(receipt => {
@@ -235,6 +245,7 @@ return (
           <tr style={{background: '#f2f2f2'}}>
             <th style={{padding: '8px 15px', textAlign: 'left'}}>Način plaćanja</th>
             <th style={{padding: '8px 15px', textAlign: 'center'}}>Kol. računa</th>
+            <th style={{padding: '8px 15px', textAlign: 'center'}}>Kol. storno</th>
             <th style={{padding: '8px 15px', textAlign: 'right'}}>Iznos</th>
           </tr>
         </thead>
@@ -243,18 +254,20 @@ return (
             <tr key={method} style={{borderBottom: '1px solid #ddd'}}>
               <td style={{padding: '8px 15px', fontWeight: '500'}}>{method}</td>
               <td style={{padding: '8px 15px', textAlign: 'center'}}>{paymentCounts[method] || 0}</td>
+              <td style={{padding: '8px 15px', textAlign: 'center', color: '#d32f2f', fontWeight: 'bold'}}>{paymentStornoCounts[method] || 0}</td>
               <td style={{padding: '8px 15px', textAlign: 'right', fontWeight: 'bold'}}>{total.toFixed(2)} €</td>
             </tr>
           ))}
         </tbody>
       </table>
 
-      <h3 style={{marginBottom: '10px', color: '#444'}}>Prodani artikli</h3>
+      <h3 style={{marginBottom: '10px', color: '#444'}}>Kol. artikala</h3>
       <table style={{width: '100%', borderCollapse: 'collapse', marginBottom: '10px', background: 'white'}}>
         <thead>
           <tr style={{background: '#ddd'}}>
             <th style={{padding: '8px 15px', textAlign: 'left'}}>Artikl</th>
             <th style={{padding: '8px 15px', textAlign: 'center'}}>Kol.</th>
+            <th style={{padding: '8px 15px', textAlign: 'center'}}>Cijena</th>
             <th style={{padding: '8px 15px', textAlign: 'right'}}>Suma</th>
           </tr>
         </thead>
@@ -263,6 +276,7 @@ return (
             <tr key={name} style={{borderBottom: '1px solid #ddd'}}>
               <td style={{padding: '8px 15px'}}>{name}</td>
               <td style={{padding: '8px 15px', textAlign: 'center'}}>{data.quantity}</td>
+              <td style={{padding: '8px 15px', textAlign: 'center'}}>{parseFloat(data.price).toFixed(2)} €</td>
               <td style={{padding: '8px 15px', textAlign: 'right'}}>{data.total.toFixed(2)} €</td>
             </tr>
           ))}
@@ -288,7 +302,7 @@ return (
       {/* ISPIS SVEGA */}
       <div style={{display: 'none'}}>
         <div ref={receiptRef}>
-          <IzvjestajReceipt data={reportData} pologValue={polog} />
+          <IzvjestajReceipt data={reportData} pologValue={polog} paymentStornoCounts={paymentStornoCounts} />
         </div>
       </div>
     </div>

@@ -780,14 +780,30 @@ app.put("/api/receipts/:id", requireAuth, async (req, res) => {
 
 // ========== TRANSACTIONS API ==========
 app.get("/api/transactions", requireAuth, async (req, res) => {
+  const { from, to } = req.query;
+  
   console.log("\n========================================");
-  console.log("📍 GET /api/transactions endpoint hit");
-  console.log("🔐 User:", req.user?.email || "NOT AUTHENTICATED");
-  console.log("========================================");
   
   try {
-    console.log("🔍 Fetching transactions from database...");
+    
+    let whereClause = {};
+    if (from && to) {
+      const startDate = new Date(from);
+      startDate.setHours(6, 0, 0, 0);
+
+      const endDate = new Date(to);
+      endDate.setDate(endDate.getDate() + 1);
+      endDate.setHours(5, 59, 59, 999);
+
+      whereClause.createdAt = {
+        gte: startDate,
+        lte: endDate
+      };
+      
+    }
+    
     const transactions = await prisma.transaction.findMany({
+      where: whereClause,
       include: { 
         receipt: { include: { items: { include: { article: true } } } },
         user: { select: { id: true, name: true, email: true } } 
@@ -795,15 +811,10 @@ app.get("/api/transactions", requireAuth, async (req, res) => {
       orderBy: { createdAt: "desc" },
     });
     
-    console.log(`✅ Successfully fetched ${transactions.length} transactions`);
-    console.log("📊 First transaction sample:", JSON.stringify(transactions[0], null, 2));
-    console.log("========================================\n");
     
     res.json(transactions);
   } catch (error) {
-    console.error("❌ ERROR in /api/transactions endpoint:");
-    console.error("Error message:", error.message);
-    console.error("Error stack:", error.stack);
+
     console.error("========================================\n");
     res.status(500).json({ error: error.message, details: error.toString() });
   }

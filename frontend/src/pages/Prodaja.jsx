@@ -11,8 +11,11 @@ const CroatianDateTime = () => {
 
 export default function Prodaja() {
   const [articles, setArticles] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [selectedItems, setSelectedItems] = useState([]);
   const [paymentMethod, setPaymentMethod] = useState("Gotovina");
+  const [locations, setLocations] = useState([]);
+  const [selectedLocationId, setSelectedLocationId] = useState("");
   const [loading, setLoading] = useState(true);
   const [searchParams] = useSearchParams();
   const [offlineCount, setOfflineCount] = useState(0);
@@ -32,7 +35,26 @@ export default function Prodaja() {
     const offline = JSON.parse(localStorage.getItem("offline_receipts") || "[]");
     setOfflineCount(offline.length);
     fetchArticles();
+    fetchLocations();
+    fetchCategories();
   }, []);
+
+  const fetchLocations = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/prodajna-mjesta`, { credentials: "include" });
+      const data = await response.json();
+      if (response.ok && Array.isArray(data)) {
+        setLocations(data.filter(loc => loc.active));
+        if (data.length > 0 && !selectedLocationId) {
+          setSelectedLocationId(String(data[0].id));
+        }
+      } else {
+        setLocations([]);
+      }
+    } catch {
+      setLocations([]);
+    }
+  };
 
   const fetchArticles = async () => {
     try {
@@ -43,6 +65,16 @@ export default function Prodaja() {
       setArticles([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/categories`, { credentials: "include" });
+      const data = await response.json();
+      setCategories(response.ok && Array.isArray(data) ? data.filter(c => c.active) : []);
+    } catch {
+      setCategories([]);
     }
   };
 
@@ -109,6 +141,7 @@ export default function Prodaja() {
 
     const receiptData = {
       receiptNumber: `RCN-${Date.now()}`,
+      prodajnoMjestoId: selectedLocationId ? Number(selectedLocationId) : null,
       invoiceType: "RAČUN",
       paymentType: paymentMethod === "Kartica" ? "KARTICA" : "GOTOVINA",
       brutto: totalBrutto,
@@ -174,6 +207,7 @@ export default function Prodaja() {
         tax: receipt.taxValue ?? totalTax,
         jir: receipt.jir ?? "",
         zki: receipt.zki ?? "",
+        location: locations.find((loc) => String(loc.id) === String(selectedLocationId))?.name || "",
         link: buildPoreznaLink(receipt.jir, receipt.invoiceDate || receipt.createdAt || new Date(), receipt.brutto ?? totalBrutto),
         phone: "0916043415",
         email: "info@kset.org",
@@ -195,7 +229,7 @@ export default function Prodaja() {
   @media (min-width: 768px) {
     .prodaja-layout {
       display: grid;
-      grid-template-columns: 1fr 380px;
+      grid-template-columns: 1fr 450px;
       gap: 20px;
       height: calc(100vh - 120px);
       align-items: start;
@@ -209,12 +243,12 @@ export default function Prodaja() {
 
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important;
+      grid-template-columns: repeat(2, 1fr) !important;
       gap: 15px !important;
     }
 
     .article-card {
-      min-height: 120px;
+      min-height: 140px;
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -224,6 +258,15 @@ export default function Prodaja() {
       border-radius: 12px !important;
       box-shadow: 0 2px 4px rgba(0,0,0,0.05);
       transition: transform 0.1s, border-color 0.1s;
+      word-break: break-word;
+      overflow-wrap: break-word;
+    }
+
+    .article-card h3 {
+      word-break: break-word;
+      overflow-wrap: break-word;
+      white-space: normal;
+      margin: 0 0 8px 0;
     }
 
     .article-card:active {
@@ -265,9 +308,9 @@ export default function Prodaja() {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    line-height: 0 !important; /* Prevents vertical clipping */
+    line-height: 0 !important;
     padding: 0 !important;
-    padding-bottom: 4px !important; /* Visual optical center adjustment */
+    padding-bottom: 4px !important;
     cursor: pointer;
     background-color: #f8f9fa;
     border: 1px solid #ddd;
@@ -295,16 +338,30 @@ export default function Prodaja() {
   }
 `}</style>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-        <h1>
-          Prodaja 
-          {offlineCount > 0 && (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h1 style={{ margin: 0 }}>
+            Prodaja
+          </h1>
+          <label style={{ fontSize: '14px', color: '#333' }}>
+            Prodajno mjesto:
+            <select
+              value={selectedLocationId}
+              onChange={(e) => setSelectedLocationId(e.target.value)}
+              style={{ marginLeft: '8px', padding: '5px 8px', borderRadius: '4px', border: '1px solid #ccc' }}
+            >
+              <option value="">(nije odabrano)</option>
+              {locations.map(loc => (
+                <option key={loc.id} value={loc.id}>{loc.name} ({loc.businessSpace})</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        {offlineCount > 0 && (
             <span style={{color: 'red', fontSize: '14px', marginLeft: '10px'}}> 
               ({offlineCount} čekaju sinkronizaciju)
             </span>
           )}
-        </h1>
-
         {offlineCount > 0 && (
           <button 
             onClick={syncOfflineReceipts} 
@@ -327,7 +384,7 @@ export default function Prodaja() {
       
       <div className="prodaja-layout">
         <div className="articles-grid">
-          <h2>{categoryId ? "Artikli u kategoriji" : "Svi artikli"}</h2>
+          <h2>{categoryId ? `Artikli u kategoriji ${categories.find(c => c.id === categoryId)?.name}` : "Svi artikli"}</h2>
           <div className="grid">
             {filteredArticles.map(article => (
               <div key={article.id} className="article-card" onClick={() => addItem(article)} style={{ cursor: 'pointer' }}>

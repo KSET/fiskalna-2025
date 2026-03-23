@@ -5,7 +5,7 @@ import "../../styles/Pages.css";
 // Tvoj originalni helper
 const fmtDate = (d) => d ? d.toLocaleDateString("hr-HR", { day: '2-digit', month: '2-digit', year: 'numeric' }) + " " + d.toLocaleTimeString("hr-HR", { hour: '2-digit', minute: '2-digit' }) : "N/A";
 
-const IzvjestajReceipt = ({ data }) => {
+const IzvjestajReceipt = ({ data, paymentStornoCounts }) => {
   const W = 42;
   const line = "─".repeat(W);
 
@@ -38,9 +38,10 @@ const IzvjestajReceipt = ({ data }) => {
 
   const paymentLines = Object.entries(articlesByPayment).map(([method, articles]) => {
     const count = paymentCounts[method] || 0;
+    const stornoCount = paymentStornoCounts?.[method] || 0;
     const totalSum = Object.values(articles).reduce((sum, item) => sum + item.total, 0);
-    const methodLabel = rpad(method, COL_NAME);
-    return methodLabel + lpad(String(count), COL_QTY) + " " + lpad(totalSum.toFixed(2) + " \u20ac", COL_TOT);
+    const methodLabel = rpad(method, COL_NAME - 5);
+    return methodLabel + lpad(String(count), 3) + "/" + lpad(String(stornoCount), 2) + " " + lpad(totalSum.toFixed(2) + " \u20ac", COL_TOT);
   }).join("\n");
 
   const firstMethod = Object.keys(paymentTotals)[0];
@@ -77,7 +78,7 @@ ${articleLines}
 ${line}
 ${rpad("UKUPNO", W - COL_TOT - 1)}${lpad(grandTotal.toFixed(2) + " \u20ac", COL_TOT + 1)}
 ${line}
-${rpad("Način plaćanja", COL_NAME)}${lpad("Kol.", COL_QTY)} ${lpad("Iznos", COL_TOT)}
+${rpad("Način plaćanja", COL_NAME - 5)}${lpad("Kol.", 3)}/${lpad("St.", 2)} ${lpad("Iznos", COL_TOT)}
 ${line}
 ${paymentLines}
 ${line}
@@ -97,10 +98,31 @@ export default function UkupniIzvjestaj() {
   const [loading, setLoading] = useState(false);
   const [activeDates, setActiveDates] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
+  const [dateRange, setDateRange] = useState([null, null]);
+  const [firstDateClick, setFirstDateClick] = useState(null); // Track first click for range selection
   const receiptRef = useRef();
+  
+
+
+  const handleCalendarDayClick = (date) => {
+    
+    if (!firstDateClick) {
+      //console.log("First click - setting single date range");
+      setFirstDateClick(date);
+      setDateRange([date, date]);
+    } else {
+      const start = new Date(Math.min(firstDateClick.getTime(), date.getTime()));
+      const end = new Date(Math.max(firstDateClick.getTime(), date.getTime()));
+      //console.log("Second click - completing range from", start, "to", end);
+      setDateRange([start, end]);
+      setFirstDateClick(null); // Reset for next selection
+    }
+  };
   const handleStorno = async (receiptId) => {
     if (!window.confirm("Jeste li sigurni da želite stornirati ovaj račun?")) return;
 
+    setLoading(true);
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/receipts/${receiptId}/storno`, {
         method: 'PUT',
@@ -109,7 +131,35 @@ export default function UkupniIzvjestaj() {
 
       if (res.ok) {
         alert("Račun uspješno storniran.");
-        handleDateClick(new Date(selectedDate));
+        
+        // Refresh data based on whether it's a single date or range
+        if (selectedDate && selectedDate.includes(' to ')) {
+          // It's a date range
+          const [startStr, endStr] = selectedDate.split(' to ');
+          const startDateObj = new Date(startStr);
+          const endDateObj = new Date(endStr);
+
+          const startOffset = startDateObj.getTimezoneOffset();
+          const startAdjusted = new Date(startDateObj.getTime() - (startOffset * 60 * 1000));
+          const startFormatted = startAdjusted.toISOString().split('T')[0];
+
+          const endOffset = endDateObj.getTimezoneOffset();
+          const endAdjusted = new Date(endDateObj.getTime() - (endOffset * 60 * 1000));
+          const endFormatted = endAdjusted.toISOString().split('T')[0];
+
+          const refreshRes = await fetch(`${import.meta.env.VITE_API_URL}/api/receipts/range?from=${startFormatted}&to=${endFormatted}`, { 
+            credentials: "include" 
+          });
+          const refreshData = await refreshRes.json();
+          setReceipts(Array.isArray(refreshData) ? refreshData : []);
+        } else if (selectedDate) {
+          // It's a single date
+          const refreshRes = await fetch(`${import.meta.env.VITE_API_URL}/api/receipts/range?from=${selectedDate}&to=${selectedDate}`, { 
+            credentials: "include" 
+          });
+          const refreshData = await refreshRes.json();
+          setReceipts(Array.isArray(refreshData) ? refreshData : []);
+        }
       } else {
         const errData = await res.json();
         alert(`Greška: ${errData.message || 'Neuspjelo storniranje'}`);
@@ -117,6 +167,8 @@ export default function UkupniIzvjestaj() {
     } catch (error) {
       console.error("Storno error:", error);
       alert("Došlo je do greške na mreži.");
+    } finally {
+      setLoading(false);
     }
   };
   useEffect(() => {
@@ -125,6 +177,34 @@ export default function UkupniIzvjestaj() {
       .then(data => setActiveDates(data))
       .catch(err => console.error("Error loading active dates:", err));
   }, []);
+
+
+  useEffect(() => {
+    //console.log("RANGE DATUMA:", dateRange);
+  }, [dateRange]);
+
+const handleCalendarChange = (dates) => {
+  
+  if (!dates) {
+    setDateRange([null, null]);
+    return;
+  }
+
+  if (Array.isArray(dates)) {
+    //console.log("Array detected - dates[0]:", dates[0], "dates[1]:", dates[1]);
+    // If end date is null (first click of range), auto-complete with start date
+    if (dates[0] && !dates[1]) {
+      //console.log("Auto-completing single date selection");
+      setDateRange([dates[0], dates[0]]);
+    } else {
+      //console.log("Setting as-is:", dates);
+      setDateRange(dates);
+    }
+  } else {
+
+    setDateRange([dates, dates]);
+  }
+};
 
   const handleDateClick = async (date) => {
     setLoading(true);
@@ -147,6 +227,47 @@ export default function UkupniIzvjestaj() {
     }
   };
 
+const handleViewTransactions = async () => {
+  //console.log("Button clicked! Current dateRange:", dateRange);
+  //console.log("dateRange[0]:", dateRange[0], "dateRange[1]:", dateRange[1]);
+  
+  if (!dateRange[0]) {
+    //console.log("dateRange[0] is falsy - showing alert");
+    alert("Molimo odaberite početni datum");
+    return;
+  }
+
+  //console.log("Proceeding with fetch...");
+  const startDateObj = new Date(dateRange[0]);
+  const endDateObj = dateRange[1] ? new Date(dateRange[1]) : new Date(dateRange[0]);
+
+  const startOffset = startDateObj.getTimezoneOffset();
+  const startAdjusted = new Date(startDateObj.getTime() - (startOffset * 60 * 1000));
+  const startStr = startAdjusted.toISOString().split('T')[0];
+
+  const endOffset = endDateObj.getTimezoneOffset();
+  const endAdjusted = new Date(endDateObj.getTime() - (endOffset * 60 * 1000));
+  const endStr = endAdjusted.toISOString().split('T')[0];
+
+  //console.log("Fetching from", startStr, "to", endStr);
+
+  setLoading(true);
+  try {
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/receipts/range?from=${startStr}&to=${endStr}`, { 
+      credentials: "include" 
+    });
+    const data = await res.json();
+    //console.log("Fetched data:", data);
+    setReceipts(Array.isArray(data) ? data : []);
+    setSelectedDate(`${startStr} to ${endStr}`);
+  } catch (error) {
+    console.error("Error fetching data:", error);
+    setReceipts([]);
+  } finally {
+    setLoading(false);
+  }
+};
+
   const dayReceipts = [...receipts].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
   const positiveReceipts = dayReceipts.filter(r => r.status !== 'STORNO' && r.status !== 'RACUN_STORNIRAN');  
   const startTime = positiveReceipts.length > 0 ? new Date(positiveReceipts[0].createdAt) : null;
@@ -158,10 +279,19 @@ export default function UkupniIzvjestaj() {
   const articlesByPayment = {};
   const allArticles = {};
   const paymentCounts = {};
+  const paymentStornoCounts = {};
 
-  positiveReceipts.forEach(receipt => {
-    const method = receipt.paymentType;
-    paymentCounts[method] = (paymentCounts[method] || 0) + 1;
+  // Broji samo RACUN i STORNO (isključuje RACUN_STORNIRAN)
+  dayReceipts.forEach(receipt => {
+    if (receipt.status !== 'RACUN_STORNIRAN') {
+      const method = receipt.paymentType;
+      paymentCounts[method] = (paymentCounts[method] || 0) + 1;
+      
+      // Broji samo STORNO
+      if (receipt.status === 'STORNO') {
+        paymentStornoCounts[method] = (paymentStornoCounts[method] || 0) + 1;
+      }
+    }
   });
 
   dayReceipts.forEach(receipt => {
@@ -210,9 +340,27 @@ export default function UkupniIzvjestaj() {
         {loading ? (
           <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>Učitavanje podataka...</div>
         ) : (
-          <div className="calendar-wrapper">
+          <div className="calendar-wrapper" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
+            <div style={{ fontSize: '14px', color: '#666', marginBottom: '10px', minHeight: '20px' }}>
+              {dateRange[0] && dateRange[1] ? (
+                <span style={{ fontWeight: 'bold', color: '#333' }}>
+                  Odabrani datum: {dateRange[0].toLocaleDateString("hr-HR")} 
+                  {dateRange[0].getTime() !== dateRange[1].getTime() ? ` do ${dateRange[1].toLocaleDateString("hr-HR")}` : ""}
+                </span>
+              ) : firstDateClick ? (
+                <span style={{ color: '#ff9800' }}>
+                  OVO ne radi i ne detektira kako spada pocetni datum: {firstDateClick.toLocaleDateString("hr-HR")} 
+                </span>
+              ) : (
+                <span style={{ color: '#999' }}>Klinite na datum da počnete...</span>
+              )}
+            </div>
             <Calendar 
-              onClickDay={handleDateClick}
+              selectRange={true}
+              value={dateRange}
+              onChange={() => {}} // Prevent default onChange behavior
+              onClickDay={handleCalendarDayClick}
+              onActiveStartDateChange={({ activeStartDate }) => setCalendarMonth(activeStartDate)}
               tileClassName={({ date, view }) => {
                 const now = new Date();
                 const isToday = date.getDate() === now.getDate() && 
@@ -228,6 +376,24 @@ export default function UkupniIzvjestaj() {
                 return classes.trim();
               }}
             />
+            <button 
+              onClick={handleViewTransactions}
+              style={{
+                background: '#667eea',
+                color: 'white',
+                border: 'none',
+                padding: '12px 30px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                fontSize: '16px',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => e.target.style.background = '#5568d3'}
+              onMouseLeave={(e) => e.target.style.background = '#667eea'}
+            >
+              Pogledaj transakcije
+            </button>
           </div>
         )}
         <style>{`
@@ -243,14 +409,41 @@ export default function UkupniIzvjestaj() {
             padding: 15px;
           }
 
+          .react-calendar__navigation {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 15px;
+          }
+
           .react-calendar__navigation button {
             min-width: 44px;
-            background: none;
-            border: none;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 6px;
             font-size: 16px;
             font-weight: bold;
             color: #333 !important;
             cursor: pointer;
+            padding: 8px 12px;
+            transition: all 0.2s ease;
+            appearance: button;
+            -webkit-appearance: button;
+          }
+
+          .react-calendar__navigation button:hover {
+            background: #e0e0e0;
+            border-color: #999;
+          }
+
+          .react-calendar__navigation button:active {
+            background: #d0d0d0;
+            border-color: #666;
+          }
+
+          .react-calendar__navigation button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
           }
 
           .react-calendar__month-view__weekdays {
@@ -303,6 +496,19 @@ export default function UkupniIzvjestaj() {
             border-radius: 8px;
           }
 
+          .react-calendar__tile--range {
+            background: #cfe0ff !important;
+            color: #333 !important;
+          }
+
+          .react-calendar__tile--rangeStart,
+          .react-calendar__tile--rangeEnd {
+            background: #667eea !important;
+            color: white !important;
+            border-radius: 8px;
+            font-weight: bold;
+          }
+
           .calendar-wrapper {
             display: flex;
             justify-content: center;
@@ -317,12 +523,21 @@ export default function UkupniIzvjestaj() {
     <div className="page-container" id="report-container">
       <div className="report-header" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
         <button 
-          onClick={() => setSelectedDate(null)} 
+          onClick={() => {
+            setSelectedDate(null);
+            setDateRange([null, null]);
+            setFirstDateClick(null); // Reset first date click tracking
+          }} 
           style={{ background: '#666', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
         >
           ← Nazad
         </button>
-        <h2 style={{margin: 0, color: '#333'}}>Izvještaj za {new Date(selectedDate).toLocaleDateString("hr-HR")}</h2>
+        <h2 style={{margin: 0, color: '#333'}}>
+          Izvještaj za {selectedDate && selectedDate.includes(' to ') 
+            ? `${new Date(selectedDate.split(' to ')[0]).toLocaleDateString("hr-HR")} - ${new Date(selectedDate.split(' to ')[1]).toLocaleDateString("hr-HR")}`
+            : selectedDate ? new Date(selectedDate).toLocaleDateString("hr-HR") : 'N/A'
+          }
+        </h2>
         <button onClick={handlePrint} className="btn-primary" style={{background: '#667eea', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '5px', cursor: 'pointer'}}>
           Ispiši ✓
         </button>
@@ -351,6 +566,7 @@ export default function UkupniIzvjestaj() {
           <tr style={{background: '#ddd'}}>
             <th style={{padding: '8px 15px', textAlign: 'left'}}>Artikli</th>
             <th style={{padding: '8px 15px', textAlign: 'center'}}>Količina</th>
+            <th style={{padding: '8px 15px', textAlign: 'center'}}>Cijena</th>
             <th style={{padding: '8px 15px', textAlign: 'right'}}>Suma</th>
           </tr>
         </thead>
@@ -359,6 +575,7 @@ export default function UkupniIzvjestaj() {
             <tr key={name} style={{borderBottom: '1px solid #ddd'}}>
               <td style={{padding: '8px 15px'}}>{name}</td>
               <td style={{padding: '8px 15px', textAlign: 'center'}}>{data.quantity}</td>
+              <td style={{padding: '8px 15px', textAlign: 'center'}}>{parseFloat(data.price).toFixed(2)} €</td>
               <td style={{padding: '8px 15px', textAlign: 'right'}}>{data.total.toFixed(2)} €</td>
             </tr>
           ))}
@@ -371,6 +588,7 @@ export default function UkupniIzvjestaj() {
           <tr style={{background: '#ddd'}}>
             <th style={{padding: '8px 15px', textAlign: 'left'}}>Način plaćanja</th>
             <th style={{padding: '8px 15px', textAlign: 'center'}}>Br. računa</th>
+            <th style={{padding: '8px 15px', textAlign: 'center'}}>Kol. storno</th>
             <th style={{padding: '8px 15px', textAlign: 'right'}}>Suma</th>
           </tr>
         </thead>
@@ -379,6 +597,7 @@ export default function UkupniIzvjestaj() {
             <tr key={method} style={{borderBottom: '1px solid #ddd'}}>
               <td style={{padding: '8px 15px'}}>{method}</td>
               <td style={{padding: '8px 15px', textAlign: 'center'}}>{paymentCounts[method] || 0}</td>
+              <td style={{padding: '8px 15px', textAlign: 'center', color: '#d32f2f', fontWeight: 'bold'}}>{paymentStornoCounts[method] || 0}</td>
               <td style={{padding: '8px 15px', textAlign: 'right'}}>{total.toFixed(2)} €</td>
             </tr>
           ))}
@@ -450,12 +669,12 @@ export default function UkupniIzvjestaj() {
       {/* print dio */}
       <div style={{display: 'none'}}>
         <div ref={receiptRef}>
-          <IzvjestajReceipt data={reportData} />
+          <IzvjestajReceipt data={reportData} paymentStornoCounts={paymentStornoCounts} />
         </div>
       </div>
       <div style={{display: 'none'}}>
         <div ref={receiptRef}>
-          <IzvjestajReceipt data={reportData} />
+          <IzvjestajReceipt data={reportData} paymentStornoCounts={paymentStornoCounts} />
         </div>
       </div>
     </div>

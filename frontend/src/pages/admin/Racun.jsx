@@ -115,6 +115,7 @@ ${line}
 Račun br: ${order.num}
 Vrijeme:  ${order.time}
 Blagajnik:${order.cashier}
+Lokacija: ${order.location || "N/A"}
 ${line}
 ${rpad("Naziv", COL_NAME)} ${lpad("Kol.", COL_QTY)} ${lpad("Cij.", COL_PRC)} ${lpad("Iznos", COL_TOT)}
 ${line}

@@ -99,7 +99,7 @@ export default function Racuni() {
       
       <input
         type="text"
-        placeholder="Pretraži račune u ovoj sesiji..."
+        placeholder="Pretraži račune u ovoj sesiji po bilo čemu (Broj, Plaćanje, Cijena, Prodavač)..."
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
         style={{
@@ -123,6 +123,7 @@ export default function Racuni() {
             <tr>
               <th>Broj računa</th>
               <th>Vrijeme</th>
+              <th>Prodajno mjesto</th>
               <th>Plaćanje</th>
               <th>Ukupno</th>
               <th>Prodavač</th>
@@ -141,6 +142,7 @@ export default function Racuni() {
                   <td>
                     {new Date(receipt.createdAt).toLocaleTimeString("hr-HR", {hour: '2-digit', minute: '2-digit', second: '2-digit'})}
                   </td>
+                  <td>{receipt.prodajnoMjesto?.name || "N/A"}</td>
                   <td>{receipt.paymentType}</td>
                   <td><span className="currency">{parseFloat(receipt.brutto).toFixed(2)}</span></td>
                   <td>
