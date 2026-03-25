@@ -28,19 +28,10 @@ export default function Kategorije() {
     }
   }, []);
 
-useEffect(() => {
-  let isMounted = true;
-  
-  const loadData = async () => {
-    await fetchUsers();
-  };
-
-  loadData();
-
-  return () => {
-    isMounted = false;
-  };
-}, [fetchUsers]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
 
   const resetForm = () => {
     setFormData({
