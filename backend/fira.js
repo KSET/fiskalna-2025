@@ -126,7 +126,8 @@ export async function handleOrderFiscalization(order, options = {}) {
   // return mockResponse;
 
   const url = process.env.FIRA_API_URL || 'https://app.fira.finance/api/v1/webshop/order/custom';
-  const headers = { 'FIRA-Api-Key': process.env.FIRA_API_KEY, 'Content-Type': 'application/json' };
+  const headers = { 'FIRA-Api-Key': firaApiKey, 'Content-Type': 'application/json' };
+  console.log(`FIRA request to ${url}: ${JSON.stringify({ headers: { ...headers, 'FIRA-Api-Key': '[REDACTED]' }, body: data }, null, 2)}`);
   try {
     const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(data) });
     console.log(`FIRA response status: ${response.status}`);
