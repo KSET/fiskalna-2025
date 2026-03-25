@@ -64,7 +64,9 @@ export async function handleOrderFiscalization(order, options = {}) {
 
 
   // Format datetime for FIRA API (LocalDateTime format without timezone)
-  const createdAt = new Date(order.createdAt).toISOString().slice(0, 19);
+  const d = new Date(order.createdAt);
+  const pad = (n) => String(n).padStart(2, '0');
+  const createdAt = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
   // Billing address for FIRA API
   // Include email if available - FIRA will send email invoice if configured

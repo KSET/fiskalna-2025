@@ -6,6 +6,8 @@ export default function ProdajnaMjesta() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [changingKey, setChangingKey] = useState(false);
+  const [originalKey, setOriginalKey] = useState("");
   const [activeLocationId, setActiveLocationId] = useState(null);
   const [savingActive, setSavingActive] = useState(false);
   
@@ -60,6 +62,8 @@ export default function ProdajnaMjesta() {
       firaApiKey: "",
     });
     setEditingId(null);
+    setChangingKey(false);
+    setOriginalKey("");
   };
 
   const handleSubmit = async (e) => {
@@ -70,11 +74,14 @@ export default function ProdajnaMjesta() {
         : `${import.meta.env.VITE_API_URL}/api/prodajna-mjesta`;
       const method = editingId ? "PUT" : "POST";
 
+      const body = { ...formData };
+      if (editingId && !changingKey) delete body.firaApiKey;
+
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(formData),
+        body: JSON.stringify(body),
       });
 
       if (response.ok) {
@@ -95,7 +102,9 @@ export default function ProdajnaMjesta() {
       paymentDevice: loc.paymentDevice,
       firaApiKey: loc.firaApiKey || "",
     });
+    setOriginalKey(loc.firaApiKey || "");
     setEditingId(loc.id);
+    setChangingKey(false);
     setShowForm(true);
   };
 
@@ -190,13 +199,44 @@ export default function ProdajnaMjesta() {
 
           <div className="form-group">
             <label>FIRA API Ključ:</label>
-            <input
-              type="password"
-              value={formData.firaApiKey}
-              onChange={(e) => setFormData({ ...formData, firaApiKey: e.target.value })}
-              required
-              placeholder="Unesite ključ"
-            />
+            {editingId ? (
+              <>
+                <p style={{ margin: "4px 0 8px", color: "#555" }}>
+                  Ključ je unesen: <code>****{originalKey.slice(-4)}</code>
+                </p>
+                <label style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "normal", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={changingKey}
+                    onChange={(e) => {
+                      setChangingKey(e.target.checked);
+                      setFormData({ ...formData, firaApiKey: e.target.checked ? "" : originalKey });
+                    }}
+                  />
+                  Promjeni ključ
+                </label>
+                {changingKey && (
+                  <input
+                    type="text"
+                    value={formData.firaApiKey}
+                    onChange={(e) => setFormData({ ...formData, firaApiKey: e.target.value })}
+                    required
+                    placeholder="Unesite novi ključ"
+                    style={{ marginTop: "8px" }}
+                    autoComplete="off"
+                  />
+                )}
+              </>
+            ) : (
+              <input
+                type="text"
+                value={formData.firaApiKey}
+                onChange={(e) => setFormData({ ...formData, firaApiKey: e.target.value })}
+                required
+                placeholder="Unesite ključ"
+                autoComplete="off"
+              />
+            )}
           </div>
 
           <div style={{ display: "flex", gap: "10px" }}>
