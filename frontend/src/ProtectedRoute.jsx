@@ -9,7 +9,11 @@ export default function ProtectedRoute({ children }) {
       credentials: "include"
     })
       .then(res => res.json())
-      .then(data => setUser(data));
+      .then(data => setUser(data))
+      .catch(error => {
+        console.error("Auth check failed:", error);
+        setUser(null);
+      });
   }, []);
 
   if (user === undefined) return <div>Loading...</div>;

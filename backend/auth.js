@@ -1,8 +1,6 @@
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import prisma from "./prismaClient.js";
 
 passport.serializeUser((user, done) => {
   done(null, user.id);
@@ -81,5 +79,3 @@ passport.use(
     }
   )
 );
-
-export default prisma;

@@ -24,17 +24,7 @@ export default function Korisnici() {
   };
 
   useEffect(() => {
-    (async () => {
-      try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users`, { credentials: "include" });
-        const data = await response.json();
-        setUsers(data);
-        setLoading(false);
-      } catch (error) {
-        console.error("Error fetching users:", error);
-        setLoading(false);
-      }
-    })();
+    fetchUsers();
   }, []);
 
   const handleEdit = (user) => {

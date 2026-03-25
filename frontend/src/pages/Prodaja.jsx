@@ -59,7 +59,7 @@ export default function Prodaja() {
 
     fetchLocations();
     fetchActiveLocation();
-  }, [selectedLocationId]);
+  }, []);
 
   const fetchArticles = async () => {
     try {

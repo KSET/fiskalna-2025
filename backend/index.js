@@ -5,7 +5,8 @@ import session from "express-session";
 import passport from "passport";
 import pg from "pg";
 import { createRequire } from "module";
-import prisma from "./auth.js"; 
+import prisma from "./prismaClient.js";
+import "./auth.js";
 import requireAuth from "./middleware/requireAuth.js";
 import { handleOrderFiscalization } from "./fira.js";
 import { getSessionRange } from './utils/sessionHelper.js';
@@ -37,7 +38,11 @@ app.use(
     secret: process.env.SESSION_SECRET || "dev_secret",
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false }, // dev only
+    cookie: { 
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      sameSite: "lax"
+    },
   })
 );
 
@@ -53,10 +58,10 @@ app.get("/api/health", async (req, res) => {
     const transactionCount = await prisma.transaction.count();
     const receiptCount = await prisma.receipt.count();
     
-    console.log(`  ✅ Database OK!`);
-    console.log(`     Users: ${userCount}`);
-    console.log(`     Transactions: ${transactionCount}`);
-    console.log(`     Receipts: ${receiptCount}`);
+    console.log(`✅ Database OK!`);
+    console.log(`Users: ${userCount}`);
+    console.log(`Transactions: ${transactionCount}`);
+    console.log(`Receipts: ${receiptCount}`);
     
     res.json({
       status: "OK",
@@ -250,7 +255,7 @@ app.get("/api/receipts", requireAuth, async (req, res) => {
   }
 });
 
-app.get('/api/receipts/current-session', async (req, res) => {
+app.get('/api/receipts/current-session', requireAuth, async (req, res) => {
   try {
     const now = new Date();
     const start = new Date(now);
@@ -286,7 +291,7 @@ app.get('/api/receipts/current-session', async (req, res) => {
 
 // ========== RECEIPTS API UPDATES ==========
 
-app.get('/api/receipts/active-dates', async (req, res) => {
+app.get('/api/receipts/active-dates', requireAuth, async (req, res) => {
   try {
     const receipts = await prisma.receipt.findMany({
       select: { createdAt: true }
@@ -306,7 +311,7 @@ app.get('/api/receipts/active-dates', async (req, res) => {
   }
 });
 
-app.get('/api/receipts/range', async (req, res) => {
+app.get('/api/receipts/range', requireAuth, async (req, res) => {
   const { from, to } = req.query;
 
   try {
@@ -910,7 +915,7 @@ app.put('/api/settings/active-location', requireAuth, async (req, res) => {
 });
 
 // GET all prodajna mjesta
-app.get('/api/prodajna-mjesta', async (req, res) => {
+app.get('/api/prodajna-mjesta', requireAuth, async (req, res) => {
   try {
     const locations = await prisma.prodajnoMjesto.findMany();
     const safeLocations = locations.map(loc => {
@@ -928,7 +933,7 @@ app.get('/api/prodajna-mjesta', async (req, res) => {
 });
 
 // POST new prodajno mjesto
-app.post('/api/prodajna-mjesta', async (req, res) => {
+app.post('/api/prodajna-mjesta', requireAuth, async (req, res) => {
   try {
     const { name, businessSpace, paymentDevice, firaApiKey, active } = req.body;
 
@@ -960,7 +965,7 @@ app.post('/api/prodajna-mjesta', async (req, res) => {
 });
 
 // PUT (update) prodajno mjesto
-app.put('/api/prodajna-mjesta/:id', async (req, res) => {
+app.put('/api/prodajna-mjesta/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
   const { name, businessSpace, paymentDevice, firaApiKey, active } = req.body;
   try {
@@ -979,7 +984,7 @@ app.put('/api/prodajna-mjesta/:id', async (req, res) => {
 });
 
 // DELETE prodajno mjesto
-app.delete('/api/prodajna-mjesta/:id', async (req, res) => {
+app.delete('/api/prodajna-mjesta/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
   try {
     await prisma.prodajnoMjesto.delete({
