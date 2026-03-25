@@ -1,6 +1,6 @@
 // frontend/src/pages/admin/Kategorije.jsx
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import "../../styles/Pages.css";
 
 export default function Kategorije() {
@@ -13,7 +13,7 @@ export default function Kategorije() {
     active: true,
   });
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/categories`, {
         credentials: "include",
@@ -26,11 +26,11 @@ export default function Kategorije() {
       setCategories([]);
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchCategories();
-  }, []);
+  }, [fetchCategories]);
 
   const resetForm = () => {
     setFormData({

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import "../../styles/Pages.css";
 
 export default function Korisnici() {
@@ -9,7 +9,7 @@ export default function Korisnici() {
   const [showNewUserForm, setShowNewUserForm] = useState(false);
   const [newUser, setNewUser] = useState({ email: "", name: "", role: "USER" });
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users`, {
         credentials: "include",
@@ -21,11 +21,11 @@ export default function Korisnici() {
       console.error("Error fetching users:", error);
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [fetchUsers]);
 
   const handleEdit = (user) => {
     setEditingId(user.id);
