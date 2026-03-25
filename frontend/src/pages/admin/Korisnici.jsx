@@ -23,8 +23,11 @@ export default function Korisnici() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchUsers();
+useEffect(() => {
+    const loadData = async () => {
+      await fetchUsers();
+    };
+    loadData();
   }, [fetchUsers]);
 
   const handleEdit = (user) => {

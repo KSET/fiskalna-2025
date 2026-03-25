@@ -28,9 +28,11 @@ export default function Kategorije() {
     }
   }, []);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => {
-    fetchCategories();
+useEffect(() => {
+    const loadData = async () => {
+      await fetchCategories();
+    };
+    loadData();
   }, [fetchCategories]);
 
   const resetForm = () => {
