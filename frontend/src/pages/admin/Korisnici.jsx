@@ -23,10 +23,19 @@ export default function Korisnici() {
     }
   }, []);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+useEffect(() => {
+  let isMounted = true;
+  
+  const loadData = async () => {
+    await fetchUsers();
+  };
+
+  loadData();
+
+  return () => {
+    isMounted = false;
+  };
+}, [fetchUsers]);
 
   const handleEdit = (user) => {
     setEditingId(user.id);

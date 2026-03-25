@@ -1,6 +1,6 @@
 // frontend/src/pages/admin/Kategorije.jsx
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import "../../styles/Pages.css";
 
 export default function Kategorije() {
@@ -13,32 +13,34 @@ export default function Kategorije() {
     active: true,
   });
 
-  useEffect(() => {
-    let subscribed = true;
-
-    (async () => {
-      try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/categories`, {
-          credentials: "include",
-        });
-        const data = await response.json();
-        if (subscribed) {
-          setCategories(Array.isArray(data) ? data : []);
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error("Error fetching categories:", error);
-        if (subscribed) {
-          setCategories([]);
-          setLoading(false);
-        }
-      }
-    })();
-
-    return () => {
-      subscribed = false;
-    };
+  const fetchCategories = useCallback(async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/categories`, {
+        credentials: "include",
+      });
+      const data = await response.json();
+      setCategories(Array.isArray(data) ? data : []);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      setCategories([]);
+      setLoading(false);
+    }
   }, []);
+
+useEffect(() => {
+  let isMounted = true;
+  
+  const loadData = async () => {
+    await fetchUsers();
+  };
+
+  loadData();
+
+  return () => {
+    isMounted = false;
+  };
+}, [fetchUsers]);
 
   const resetForm = () => {
     setFormData({
