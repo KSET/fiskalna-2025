@@ -63,10 +63,20 @@ export async function handleOrderFiscalization(order, options = {}) {
   }
 
 
-  // Format datetime for FIRA API (LocalDateTime format without timezone)
-  const d = new Date(order.createdAt);
-  const pad = (n) => String(n).padStart(2, '0');
-  const createdAt = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  // Format datetime for FIRA API (LocalDateTime format in Europe/Zagreb timezone)
+  // Uses formatToParts keyed by type to avoid locale separator quirks and
+  // hourCycle 'h23' to prevent the midnight="24:00:00" ICU bug.
+  const _dtf = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Zagreb',
+    year: 'numeric',
+    month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hourCycle: 'h23',
+  });
+  const _parts = Object.fromEntries(
+    _dtf.formatToParts(new Date(order.createdAt)).map(({ type, value }) => [type, value])
+  );
+  const createdAt = `${_parts.year}-${_parts.month}-${_parts.day}T${_parts.hour}:${_parts.minute}:${_parts.second}`;
 
   // Billing address for FIRA API
   // Include email if available - FIRA will send email invoice if configured

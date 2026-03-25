@@ -213,7 +213,7 @@ export default function ProdajnaMjesta() {
                       setFormData({ ...formData, firaApiKey: e.target.checked ? "" : originalKey });
                     }}
                   />
-                  Promjeni ključ
+                  Promijeni ključ
                 </label>
                 {changingKey && (
                   <input
@@ -293,7 +293,7 @@ export default function ProdajnaMjesta() {
                 <td>{loc.name}</td>
                 <td><code>{loc.businessSpace}</code></td>
                 <td><code>{loc.paymentDevice}</code></td>
-                <td><code>{loc.firaApiKey || "-"}</code></td>
+                <td><code>{loc.firaApiKey ? `****${loc.firaApiKey.slice(-4)}` : "-"}</code></td>
                 <td className="actions">
                   <button onClick={() => handleEdit(loc)} className="icon-btn edit" title="Uredi">
                     <i className="fas fa-edit"></i>

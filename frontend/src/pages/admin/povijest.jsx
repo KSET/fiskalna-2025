@@ -77,9 +77,10 @@ export default function Povijest() {
 
   const getArticlesReport = () => {
     const articleMap = {};
-    
+
     filteredTransactions.forEach(t => {
       if (t.receipt?.items && t.receipt.status !== 'STORNO' && t.receipt.status !== 'RACUN_STORNIRAN') {
+        const isCash = t.receipt.paymentType === 'GOTOVINA';
         t.receipt.items.forEach(item => {
           const name = item.article?.name || "N/A";
           if (!articleMap[name]) {
@@ -87,22 +88,30 @@ export default function Povijest() {
               name,
               price: item.price,
               quantity: 0,
+              cashTotal: 0,
+              cardTotal: 0,
               total: 0
             };
           }
           const qty = parseFloat(item.quantity);
+          const itemTotal = qty * Math.abs(parseFloat(item.price));
           articleMap[name].quantity += qty;
-          articleMap[name].total += qty * Math.abs(parseFloat(item.price));
+          articleMap[name].total += itemTotal;
+          if (isCash) {
+            articleMap[name].cashTotal += itemTotal;
+          } else {
+            articleMap[name].cardTotal += itemTotal;
+          }
         });
       }
     });
-    
+
     return Object.values(articleMap).sort((a, b) => b.total - a.total);
   };
 
   const getPaymentReport = () => {
     const paymentMap = {};
-    
+
     filteredTransactions.forEach(t => {
       if (t.receipt?.paymentType && t.receipt.status !== 'STORNO' && t.receipt.status !== 'RACUN_STORNIRAN') {
         const method = t.receipt.paymentType;
@@ -113,8 +122,25 @@ export default function Povijest() {
         paymentMap[method].count += 1;
       }
     });
-    
+
     return Object.values(paymentMap).sort((a, b) => b.total - a.total);
+  };
+
+  const getProdajnaMjestaReport = () => {
+    const map = {};
+    filteredTransactions.forEach(t => {
+      if (t.receipt?.status !== 'STORNO' && t.receipt?.status !== 'RACUN_STORNIRAN') {
+        const name = t.receipt?.prodajnoMjestoNaziv || "Nepoznato";
+        if (!map[name]) map[name] = { name, total: 0, count: 0, gotovina: 0, kartica: 0 };
+        const amt = parseFloat(t.amount);
+        map[name].total += amt;
+        map[name].count += 1;
+        const pt = t.receipt?.paymentType;
+        if (pt === 'GOTOVINA') map[name].gotovina += amt;
+        else if (pt === 'KARTICA') map[name].kartica += amt;
+      }
+    });
+    return Object.values(map).sort((a, b) => b.total - a.total);
   };
 
   const exportTransactionsToExcel = () => {
@@ -122,7 +148,7 @@ export default function Povijest() {
       "Broj Računa": t.receipt?.invoiceNumber || "N/A",
       "Iznos (€)": parseFloat(t.amount).toFixed(2),
       "Plaćanje": t.receipt?.paymentType || "N/A",
-      "Status": t.receipt?.status === 'STORNO' ? 'Storno' : t.receipt?.status === 'RACUN_STORNIRAN' ? 'Otkazano' : 'Gotovo',
+      "Status": t.receipt?.status === 'STORNO' ? 'Storno' : t.receipt?.status === 'RACUN_STORNIRAN' ? 'Otkazano' : 'Aktivan',
       "Prodavač": t.user?.name || "Nepoznato",
       "Datum": new Date(t.createdAt).toLocaleDateString("hr-HR"),
       "Vrijeme": new Date(t.createdAt).toLocaleTimeString("hr-HR", { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
@@ -141,6 +167,8 @@ export default function Povijest() {
       "Naziv Artikla": a.name,
       "Cijena (€)": parseFloat(a.price).toFixed(2),
       "Količina": a.quantity,
+      "Gotovina (€)": a.cashTotal.toFixed(2),
+      "Kartica (€)": a.cardTotal.toFixed(2),
       "Suma (€)": a.total.toFixed(2)
     }));
 
@@ -154,7 +182,7 @@ export default function Povijest() {
     const paymentReport = getPaymentReport();
     const excelData = paymentReport.map(p => ({
       "Način Plaćanja": p.method,
-      "Broj Računa": p.count,
+      "Količina": p.count,
       "Suma (€)": p.total.toFixed(2)
     }));
 
@@ -162,6 +190,21 @@ export default function Povijest() {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Prodaja po Plaćanju");
     XLSX.writeFile(workbook, `KSET_Izvjestaj_Placanje_${startDate}_${endDate}.xlsx`);
+  };
+
+  const exportProdajnaMjestaToExcel = () => {
+    const report = getProdajnaMjestaReport();
+    const excelData = report.map(p => ({
+      "Prodajno Mjesto": p.name,
+      "Količina": p.count,
+      "Gotovina (€)": p.gotovina.toFixed(2),
+      "Kartica (€)": p.kartica.toFixed(2),
+      "Suma (€)": p.total.toFixed(2)
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Prodaja po Prodajnim Mjestima");
+    XLSX.writeFile(workbook, `KSET_Izvjestaj_ProdajnaMjesta_${startDate}_${endDate}.xlsx`);
   };
 
   const handleExport = () => {
@@ -174,6 +217,9 @@ export default function Povijest() {
         break;
       case 'payment':
         exportPaymentToExcel();
+        break;
+      case 'prodajnaMjesta':
+        exportProdajnaMjestaToExcel();
         break;
       default:
         break;
@@ -190,7 +236,9 @@ export default function Povijest() {
 
   const articlesReport = getArticlesReport();
   const paymentReport = getPaymentReport();
-  const totalAmount = filteredTransactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+  const totalAmount = filteredTransactions
+    .filter(t => t.receipt?.status !== 'STORNO' && t.receipt?.status !== 'RACUN_STORNIRAN')
+    .reduce((sum, t) => sum + parseFloat(t.amount), 0);
 
   if (loading) return <div style={{ padding: '40px' }}>Učitavanje...</div>;
 
@@ -223,6 +271,7 @@ export default function Povijest() {
             <option value="transactions">Povijest transakcija</option>
             <option value="articles">Prodaja po artiklima</option>
             <option value="payment">Prodaja po načinu plaćanja</option>
+            <option value="prodajnaMjesta">Prodaja po prodajnim mjestima</option>
           </select>
         </div>
 
@@ -490,6 +539,8 @@ export default function Povijest() {
                 <th style={thStyle}>Naziv Artikla</th>
                 <th style={thStyle}>Cijena</th>
                 <th style={thStyle}>Količina</th>
+                <th style={thStyle}>Gotovina</th>
+                <th style={thStyle}>Kartica</th>
                 <th style={thStyle}>Suma</th>
               </tr>
             </thead>
@@ -499,11 +550,13 @@ export default function Povijest() {
                   <td style={tdStyle}>{article.name}</td>
                   <td style={tdStyle}>{parseFloat(article.price).toFixed(2)} €</td>
                   <td style={tdStyle}>{article.quantity}</td>
+                  <td style={tdStyle}>{article.cashTotal.toFixed(2)} €</td>
+                  <td style={tdStyle}>{article.cardTotal.toFixed(2)} €</td>
                   <td style={{ ...tdStyle, fontWeight: '600' }}>{article.total.toFixed(2)} €</td>
                 </tr>
               ))}
               <tr style={{ backgroundColor: '#edf2f7', fontWeight: 'bold' }}>
-                <td colSpan="3" style={{ ...tdStyle, textAlign: 'right' }}>UKUPNO:</td>
+                <td colSpan="5" style={{ ...tdStyle, textAlign: 'right' }}>UKUPNO:</td>
                 <td style={{ ...tdStyle, fontWeight: 'bold' }}>{articlesReport.reduce((sum, a) => sum + a.total, 0).toFixed(2)} €</td>
               </tr>
             </tbody>
@@ -515,7 +568,7 @@ export default function Povijest() {
             <thead>
               <tr style={{ backgroundColor: '#edf2f7', textAlign: 'left' }}>
                 <th style={thStyle}>Način Plaćanja</th>
-                <th style={thStyle}>Broj Računa</th>
+                <th style={thStyle}>Količina</th>
                 <th style={thStyle}>Suma</th>
               </tr>
             </thead>
@@ -535,6 +588,41 @@ export default function Povijest() {
             </tbody>
           </table>
         )}
+
+        {reportType === 'prodajnaMjesta' && (() => {
+          const report = getProdajnaMjestaReport();
+          return (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#edf2f7', textAlign: 'left' }}>
+                  <th style={thStyle}>Prodajno Mjesto</th>
+                  <th style={thStyle}>Količina</th>
+                  <th style={thStyle}>Gotovina</th>
+                  <th style={thStyle}>Kartica</th>
+                  <th style={thStyle}>Suma</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.map((pm, idx) => (
+                  <tr key={idx} style={{ borderBottom: '1px solid #edf2f7' }}>
+                    <td style={tdStyle}>{pm.name}</td>
+                    <td style={tdStyle}>{pm.count}</td>
+                    <td style={tdStyle}>{pm.gotovina.toFixed(2)} €</td>
+                    <td style={tdStyle}>{pm.kartica.toFixed(2)} €</td>
+                    <td style={{ ...tdStyle, fontWeight: '600' }}>{pm.total.toFixed(2)} €</td>
+                  </tr>
+                ))}
+                <tr style={{ backgroundColor: '#edf2f7', fontWeight: 'bold' }}>
+                  <td colSpan="1" style={{ ...tdStyle, textAlign: 'right' }}>UKUPNO:</td>
+                  <td style={tdStyle}>{report.reduce((sum, p) => sum + p.count, 0)}</td>
+                  <td style={tdStyle}>{report.reduce((sum, p) => sum + p.gotovina, 0).toFixed(2)} €</td>
+                  <td style={tdStyle}>{report.reduce((sum, p) => sum + p.kartica, 0).toFixed(2)} €</td>
+                  <td style={{ ...tdStyle, fontWeight: 'bold' }}>{report.reduce((sum, p) => sum + p.total, 0).toFixed(2)} €</td>
+                </tr>
+              </tbody>
+            </table>
+          );
+        })()}
       </div>
     </div>
   );
@@ -546,7 +634,7 @@ function StatusBadge({ status }) {
   };
   if (status === 'STORNO') return <span style={{ ...styles, backgroundColor: '#fed7d7', color: '#9b2c2c' }}>Storno</span>;
   if (status === 'RACUN_STORNIRAN') return <span style={{ ...styles, backgroundColor: '#feebc8', color: '#9c4221' }}>Otkazano</span>;
-  return <span style={{ ...styles, backgroundColor: '#c6f6d5', color: '#22543d' }}>Gotovo</span>;
+  return <span style={{ ...styles, backgroundColor: '#c6f6d5', color: '#22543d' }}>Aktivan</span>;
 }
 
 const thStyle = { padding: '15px', fontSize: '14px', color: '#4a5568', textTransform: 'uppercase', letterSpacing: '0.05em' };
