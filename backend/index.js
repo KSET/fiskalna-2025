@@ -491,6 +491,7 @@ app.post("/api/receipts", requireAuth, async (req, res) => {
         discountValue,
         shippingCost,
         prodajnoMjestoNaziv: appSettings.prodajnoMjesto.name,
+        prodajnoMjestoId: appSettings.prodajnoMjesto.id,
         items: {
           create: items.map((item) => ({
             name: item.name,
@@ -621,6 +622,8 @@ app.put("/api/receipts/:id/storno", requireAuth, async (req, res) => {
         internalNote: `STORNO of ${originalReceipt.invoiceNumber}`,
         discountValue: originalReceipt.discountValue,
         shippingCost: originalReceipt.shippingCost,
+        prodajnoMjestoNaziv: originalReceipt.prodajnoMjestoNaziv,
+        prodajnoMjestoId: originalReceipt.prodajnoMjestoId,
         items: {
           create: originalReceipt.items.map((item) => ({
             name: item.name,
@@ -646,6 +649,21 @@ app.put("/api/receipts/:id/storno", requireAuth, async (req, res) => {
       },
     });
 
+    // Dohvati prodajno mjesto originalnog računa
+    const originalProdajnoMjesto = await prisma.prodajnoMjesto.findUnique({
+      where: { id: originalReceipt.prodajnoMjestoId },
+    });
+    if (!originalProdajnoMjesto) {
+      return res.status(400).json({ error: "Prodajno mjesto originalnog računa nije pronađeno." });
+    }
+    let firaApiKey;
+    try {
+      firaApiKey = decrypt(originalProdajnoMjesto.firaApiKey);
+      if (!firaApiKey) throw new Error("Prazan ključ");
+    } catch {
+      return res.status(500).json({ error: "Greška pri dešifriranju API ključa prodajnog mjesta." });
+    }
+
     // Fiscalize storno receipt via FIRA
     const firaResult = await handleOrderFiscalization({
       id: stornoReceipt.id,
@@ -655,7 +673,7 @@ app.put("/api/receipts/:id/storno", requireAuth, async (req, res) => {
       currency: stornoReceipt.currency,
       paymentType: stornoReceipt.paymentType,
       items: stornoReceipt.items,
-    });
+    }, { firaApiKey, prodajnoMjestoNaziv: originalProdajnoMjesto.name });
 
     if (firaResult && firaResult.invoiceNumber) {
       await prisma.receipt.update({
@@ -931,20 +949,19 @@ app.get('/api/prodajna-mjesta', requireAuth, async (req, res) => {
 // POST new prodajno mjesto
 app.post('/api/prodajna-mjesta', requireAuth, async (req, res) => {
   try {
-    const { name, businessSpace, paymentDevice, firaApiKey, active } = req.body;
+    const { name, businessSpace, paymentDevice, firaApiKey } = req.body;
 
     // Log for debugging
     console.log("Attempting to encrypt key...");
     const encryptedKey = encrypt(firaApiKey);
-    
+
     console.log("Attempting to save to database...");
     const newLocation = await prisma.prodajnoMjesto.create({
-      data: { 
-        name, 
-        businessSpace, 
-        paymentDevice, 
-        firaApiKey: encryptedKey, 
-        active 
+      data: {
+        name,
+        businessSpace,
+        paymentDevice,
+        firaApiKey: encryptedKey
       }
     });
 
@@ -963,9 +980,9 @@ app.post('/api/prodajna-mjesta', requireAuth, async (req, res) => {
 // PUT (update) prodajno mjesto
 app.put('/api/prodajna-mjesta/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
-  const { name, businessSpace, paymentDevice, firaApiKey, active } = req.body;
+  const { name, businessSpace, paymentDevice, firaApiKey } = req.body;
   try {
-    const data = { name, businessSpace, paymentDevice, active };
+    const data = { name, businessSpace, paymentDevice };
     if (firaApiKey && firaApiKey !== "********") {
       data.firaApiKey = encrypt(firaApiKey);
     }

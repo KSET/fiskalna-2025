@@ -14,7 +14,6 @@ export default function ProdajnaMjesta() {
     businessSpace: "",
     paymentDevice: "",
     firaApiKey: "",
-    active: true,
   });
 
   const refreshData = async () => {
@@ -59,7 +58,6 @@ export default function ProdajnaMjesta() {
       businessSpace: "",
       paymentDevice: "",
       firaApiKey: "",
-      active: true,
     });
     setEditingId(null);
   };
@@ -96,7 +94,6 @@ export default function ProdajnaMjesta() {
       businessSpace: loc.businessSpace,
       paymentDevice: loc.paymentDevice,
       firaApiKey: loc.firaApiKey || "",
-      active: loc.active,
     });
     setEditingId(loc.id);
     setShowForm(true);
@@ -117,21 +114,6 @@ export default function ProdajnaMjesta() {
       } catch (error) {
         console.error("Error deleting location:", error);
       }
-    }
-  };
-
-  const toggleActive = async (id, currentActive) => {
-    try {
-      const location = locations.find(l => l.id === id);
-      await fetch(`${import.meta.env.VITE_API_URL}/api/prodajna-mjesta/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ ...location, active: !currentActive }),
-      });
-      refreshData();
-    } catch (error) {
-      console.error("Error toggling status:", error);
     }
   };
 
@@ -217,17 +199,6 @@ export default function ProdajnaMjesta() {
             />
           </div>
 
-          <div className="form-group">
-            <label>
-              <input
-                type="checkbox"
-                checked={formData.active}
-                onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-              />
-              {" "}Aktivno
-            </label>
-          </div>
-
           <div style={{ display: "flex", gap: "10px" }}>
             <button type="submit" className="btn-success">
               {editingId ? "Ažuriraj" : "Spremi"}
@@ -256,7 +227,7 @@ export default function ProdajnaMjesta() {
         >
           {activeLocationId === null && <option value="" disabled>— odaberite —</option>}
           {locations.map(loc => (
-            <option key={loc.id} value={loc.id}>{loc.name}{!loc.active ? " (neaktivno)" : ""}</option>
+            <option key={loc.id} value={loc.id}>{loc.name}</option>
           ))}
         </select>
         {savingActive && <span style={{ color: "#888", fontSize: "0.85rem" }}>Spremanje...</span>}
@@ -273,27 +244,16 @@ export default function ProdajnaMjesta() {
               <th>Prostor</th>
               <th>Uređaj</th>
               <th>API Ključ</th>
-              <th>Aktivno</th>
               <th>Akcije</th>
             </tr>
           </thead>
           <tbody>
             {locations.map(loc => (
-              <tr key={loc.id} className={!loc.active ? "inactive" : activeLocationId === loc.id ? "active-location" : ""}>
+              <tr key={loc.id} className={activeLocationId === loc.id ? "active-location" : ""}>
                 <td>{loc.name}</td>
                 <td><code>{loc.businessSpace}</code></td>
                 <td><code>{loc.paymentDevice}</code></td>
                 <td><code>{loc.firaApiKey || "-"}</code></td>
-                <td>
-                  <label className="toggle-switch">
-                    <input
-                      type="checkbox"
-                      checked={loc.active}
-                      onChange={() => toggleActive(loc.id, loc.active)}
-                    />
-                    <span className="toggle-slider"></span>
-                  </label>
-                </td>
                 <td className="actions">
                   <button onClick={() => handleEdit(loc)} className="icon-btn edit" title="Uredi">
                     <i className="fas fa-edit"></i>

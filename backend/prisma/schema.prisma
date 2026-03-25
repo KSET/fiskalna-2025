@@ -99,6 +99,7 @@ model Receipt {
   discountValue         Decimal  @db.Decimal(10, 2) @default(0)
   shippingCost          Decimal  @db.Decimal(10, 2) @default(0)
   prodajnoMjestoNaziv   String?
+  prodajnoMjestoId      Int?
   status                ReceiptStatus @default(RACUN)
   items                 ReceiptItem[]
   transaction           Transaction?
@@ -184,7 +185,6 @@ model ProdajnoMjesto {
   businessSpace   String
   paymentDevice   String
   firaApiKey      String
-  active          Boolean  @default(true)
   appSettings     AppSettings[]
 }
 
