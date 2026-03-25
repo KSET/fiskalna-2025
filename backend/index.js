@@ -932,13 +932,19 @@ app.put('/api/settings/active-location', requireAuth, async (req, res) => {
 app.get('/api/prodajna-mjesta', requireAuth, async (req, res) => {
   try {
     const locations = await prisma.prodajnoMjesto.findMany();
+    // TODO: re-enable masking
+    // const safeLocations = locations.map(loc => {
+    //   let maskedKey = "********";
+    //   try {
+    //     const real = decrypt(loc.firaApiKey);
+    //     maskedKey = `****${real.slice(-4)}`;
+    //   } catch { /* leave as ******** if decryption fails */ }
+    //   return { ...loc, firaApiKey: maskedKey };
+    // });
     const safeLocations = locations.map(loc => {
-      let maskedKey = "********";
       try {
-        const real = decrypt(loc.firaApiKey);
-        maskedKey = `****${real.slice(-4)}`;
-      } catch { /* leave as ******** if decryption fails */ }
-      return { ...loc, firaApiKey: maskedKey };
+        return { ...loc, firaApiKey: decrypt(loc.firaApiKey) };
+      } catch { return { ...loc, firaApiKey: "DECRYPTION_ERROR" }; }
     });
     res.json(safeLocations);
   } catch (error) {
