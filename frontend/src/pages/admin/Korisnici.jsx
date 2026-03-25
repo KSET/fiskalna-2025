@@ -23,6 +23,7 @@ export default function Korisnici() {
     }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);

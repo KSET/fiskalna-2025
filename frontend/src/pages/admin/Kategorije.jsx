@@ -1,6 +1,6 @@
 // frontend/src/pages/admin/Kategorije.jsx
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import "../../styles/Pages.css";
 
 export default function Kategorije() {
@@ -13,24 +13,32 @@ export default function Kategorije() {
     active: true,
   });
 
-  const fetchCategories = useCallback(async () => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/categories`, {
-        credentials: "include",
-      });
-      const data = await response.json();
-      setCategories(Array.isArray(data) ? data : []);
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching categories:", error);
-      setCategories([]);
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
+    let subscribed = true;
+
+    (async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/categories`, {
+          credentials: "include",
+        });
+        const data = await response.json();
+        if (subscribed) {
+          setCategories(Array.isArray(data) ? data : []);
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+        if (subscribed) {
+          setCategories([]);
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      subscribed = false;
+    };
+  }, []);
 
   const resetForm = () => {
     setFormData({
