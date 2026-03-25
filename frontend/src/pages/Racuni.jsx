@@ -6,6 +6,8 @@ export default function Racuni() {
   const [receipts, setReceipts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterPayment, setFilterPayment] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
   const [printData, setPrintData] = useState(null);
 
   useEffect(() => {
@@ -34,14 +36,21 @@ export default function Racuni() {
     }
   };
 
+  const uniquePaymentTypes = [...new Set(receipts.map(r => r.paymentType).filter(Boolean))];
+
   const filteredReceipts = receipts.filter(receipt => {
     const searchLower = searchTerm.toLowerCase();
-    return (
+    const matchesSearch = (
       receipt.invoiceNumber?.toLowerCase().includes(searchLower) ||
       receipt.paymentType.toLowerCase().includes(searchLower) ||
       receipt.user?.name?.toLowerCase().includes(searchLower) ||
       receipt.brutto.toString().includes(searchLower)
     );
+    if (!matchesSearch) return false;
+    if (filterPayment && receipt.paymentType !== filterPayment) return false;
+    if (filterStatus === 'STORNO_OTKAZANO' && receipt.status !== 'STORNO' && receipt.status !== 'RACUN_STORNIRAN') return false;
+    else if (filterStatus && filterStatus !== 'STORNO_OTKAZANO' && receipt.status !== filterStatus) return false;
+    return true;
   });
 
   const handleStorno = async (receiptId) => {
@@ -94,7 +103,7 @@ export default function Racuni() {
       </div>
 
       <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '5px', marginBottom: '20px', fontSize: '13px', color: '#666', border: '1px solid #eee' }}>
-        Prikazuju se računi od <strong>06:00h</strong> danas do kraja smjene.
+        Prikazuju se računi u periodu od <strong>06:00h</strong> do sutradan u <strong>06:00h</strong>.
       </div>
       
       <input
@@ -113,8 +122,27 @@ export default function Racuni() {
         }}
       />
 
-      <div style={{color: '#666', marginBottom: '15px'}}>
-        Pronađeno: {filteredReceipts.length} računa
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <select value={filterPayment} onChange={e => setFilterPayment(e.target.value)}
+          style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid #ddd', fontSize: '14px' }}>
+          <option value="">Sva plaćanja</option>
+          {uniquePaymentTypes.map(pt => <option key={pt} value={pt}>{pt}</option>)}
+        </select>
+        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+          style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid #ddd', fontSize: '14px' }}>
+          <option value="">Svi statusi</option>
+          <option value="RACUN">AKTIVAN</option>
+          <option value="STORNO">STORNO</option>
+          <option value="RACUN_STORNIRAN">OTKAZANO</option>
+          <option value="STORNO_OTKAZANO">STORNO + OTKAZANO</option>
+        </select>
+        {(filterPayment || filterStatus) && (
+          <button onClick={() => { setFilterPayment(''); setFilterStatus(''); }}
+            style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid #ccc', background: '#f5f5f5', cursor: 'pointer', fontSize: '13px' }}>
+            Resetiraj filtere
+          </button>
+        )}
+        <span style={{ color: '#666', fontSize: '13px' }}>{filteredReceipts.length} / {receipts.length} računa</span>
       </div>
 
       <div className="table-container">

@@ -101,7 +101,8 @@ export default function UkupniIzvjestaj() {
   const [dateRange, setDateRange] = useState([null, null]);
   const [firstDateClick, setFirstDateClick] = useState(null); // Track first click for range selection
   const receiptRef = useRef();
-  
+  const [filterPayment, setFilterPayment] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
 
 
   const handleCalendarDayClick = (date) => {
@@ -275,6 +276,14 @@ export default function UkupniIzvjestaj() {
   });
   const grandTotal = Object.values(paymentTotals).reduce((sum, total) => sum + total, 0);
   const reportData = { startTime, endTime, positiveReceipts, minReceiptNum, maxReceiptNum, allArticles, articlesByPayment, paymentTotals, paymentCounts, grandTotal };
+
+  const uniquePaymentTypes = [...new Set(dayReceipts.map(r => r.paymentType).filter(Boolean))];
+  const filteredReceipts = dayReceipts.filter(r => {
+    if (filterPayment && r.paymentType !== filterPayment) return false;
+    if (filterStatus === 'STORNO_OTKAZANO' && r.status !== 'STORNO' && r.status !== 'RACUN_STORNIRAN') return false;
+    else if (filterStatus && filterStatus !== 'STORNO_OTKAZANO' && r.status !== filterStatus) return false;
+    return true;
+  });
 
   const handlePrint = () => {
     const w = window.open("", "_blank");
@@ -481,6 +490,8 @@ export default function UkupniIzvjestaj() {
             setSelectedDate(null);
             setDateRange([null, null]);
             setFirstDateClick(null); // Reset first date click tracking
+            setFilterPayment('');
+            setFilterStatus('');
           }} 
           style={{ background: '#666', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
         >
@@ -563,6 +574,28 @@ export default function UkupniIzvjestaj() {
       </div>
 
 <h3 style={{ marginTop: '30px', marginBottom: '10px', color: '#333', paddingLeft: '5px' }}>Popis svih računa</h3>
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <select value={filterPayment} onChange={e => setFilterPayment(e.target.value)}
+          style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid #ccc', fontSize: '14px' }}>
+          <option value="">Sva plaćanja</option>
+          {uniquePaymentTypes.map(pt => <option key={pt} value={pt}>{pt}</option>)}
+        </select>
+        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+          style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid #ccc', fontSize: '14px' }}>
+          <option value="">Svi statusi</option>
+          <option value="RACUN">AKTIVAN</option>
+          <option value="STORNO">STORNO</option>
+          <option value="RACUN_STORNIRAN">OTKAZANO</option>
+          <option value="STORNO_OTKAZANO">STORNO + OTKAZANO</option>
+        </select>
+        {(filterPayment || filterStatus) && (
+          <button onClick={() => { setFilterPayment(''); setFilterStatus(''); }}
+            style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid #ccc', background: '#f5f5f5', cursor: 'pointer', fontSize: '13px' }}>
+            Resetiraj filtere
+          </button>
+        )}
+        <span style={{ color: '#666', fontSize: '13px' }}>{filteredReceipts.length} / {dayReceipts.length} računa</span>
+      </div>
       <table style={{ width: '100%', borderCollapse: 'collapse', background: 'white', marginBottom: '40px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
         <thead>
           <tr style={{ background: '#eee', borderBottom: '2px solid #ccc' }}>
@@ -574,7 +607,7 @@ export default function UkupniIzvjestaj() {
           </tr>
         </thead>
         <tbody>
-          {dayReceipts.map((r) => {
+          {filteredReceipts.map((r) => {
             const isStorno = r.status === 'STORNO';
             const isCancelled = r.status === 'RACUN_STORNIRAN';
 
@@ -595,7 +628,7 @@ export default function UkupniIzvjestaj() {
                     <span style={{color: '#d32f2f', fontWeight: 'bold'}}>STORNO</span>
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                      <span style={{color: '#388e3c'}}>OK</span>
+                      <span style={{color: '#388e3c'}}>AKTIVAN</span>
                       <button 
                         onClick={() => handleStorno(r.id)}
                         style={{

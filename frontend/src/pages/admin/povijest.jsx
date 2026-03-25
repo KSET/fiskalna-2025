@@ -8,6 +8,8 @@ export default function Povijest() {
   const [loading, setLoading] = useState(true);
   const [, setError] = useState(null);
   const [filter, setFilter] = useState("");
+  const [filterPayment, setFilterPayment] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
   const [reportType, setReportType] = useState("transactions");
   const [showDatePicker, setShowDatePicker] = useState(false);
 
@@ -226,12 +228,19 @@ export default function Povijest() {
     }
   };
 
+  const uniquePaymentTypes = [...new Set(transactions.map(t => t.receipt?.paymentType).filter(Boolean))];
+
   const filteredTransactions = transactions.filter(t => {
     const transactionSessionDay = getSessionDate(t.createdAt);
-    const matchesSearch = !filter || 
+    const matchesSearch = !filter ||
       t.receipt?.invoiceNumber?.toLowerCase().includes(filter.toLowerCase()) ||
       t.user?.name?.toLowerCase().includes(filter.toLowerCase());
-    return matchesSearch && transactionSessionDay >= startDate && transactionSessionDay <= endDate;
+    if (!matchesSearch) return false;
+    if (transactionSessionDay < startDate || transactionSessionDay > endDate) return false;
+    if (filterPayment && t.receipt?.paymentType !== filterPayment) return false;
+    if (filterStatus === 'STORNO_OTKAZANO' && t.receipt?.status !== 'STORNO' && t.receipt?.status !== 'RACUN_STORNIRAN') return false;
+    else if (filterStatus && filterStatus !== 'STORNO_OTKAZANO' && t.receipt?.status !== filterStatus) return false;
+    return true;
   });
 
   const articlesReport = getArticlesReport();
@@ -306,7 +315,7 @@ export default function Povijest() {
             boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
             padding: '20px',
             zIndex: 1000,
-            minWidth: '520px'
+            minWidth: '320px'
           }} ref={datePickerRef}>
             <div style={{ marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, color: '#1a202c', fontSize: '16px' }}>Odaberi razdoblje</h3>
@@ -318,41 +327,28 @@ export default function Povijest() {
               </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#718096', display: 'block', marginBottom: '8px' }}>POČETNI DATUM</label>
-                <Calendar
-                  value={tempStartDate}
-                  onChange={handleDateSelection}
-                  tileClassName={({ date }) => {
-                    if (tempStartDate && tempEndDate) {
-                      if (date.toDateString() === tempStartDate.toDateString()) return 'date-range-start';
-                      if (date.toDateString() === tempEndDate.toDateString()) return 'date-range-end';
-                      if (date > tempStartDate && date < tempEndDate) return 'date-range-middle';
-                    } else if (tempStartDate && date.toDateString() === tempStartDate.toDateString()) {
-                      return 'date-range-start';
-                    }
-                    return '';
-                  }}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#718096', display: 'block', marginBottom: '8px' }}>ZAVRŠNI DATUM</label>
-                <Calendar
-                  value={tempEndDate}
-                  onChange={handleDateSelection}
-                  tileClassName={({ date }) => {
-                    if (tempStartDate && tempEndDate) {
-                      if (date.toDateString() === tempStartDate.toDateString()) return 'date-range-start';
-                      if (date.toDateString() === tempEndDate.toDateString()) return 'date-range-end';
-                      if (date > tempStartDate && date < tempEndDate) return 'date-range-middle';
-                    } else if (tempStartDate && date.toDateString() === tempStartDate.toDateString()) {
-                      return 'date-range-start';
-                    }
-                    return '';
-                  }}
-                />
-              </div>
+            <div style={{ marginBottom: '10px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#718096', display: 'block', marginBottom: '8px' }}>
+                {!tempStartDate || (tempStartDate && tempEndDate) ? 'KLIKNI POČETNI DATUM' : 'KLIKNI ZAVRŠNI DATUM'}
+              </label>
+              <Calendar
+                value={tempStartDate}
+                onChange={handleDateSelection}
+                tileClassName={({ date }) => {
+                  if (tempStartDate && tempEndDate) {
+                    if (date.toDateString() === tempStartDate.toDateString()) return 'date-range-start';
+                    if (date.toDateString() === tempEndDate.toDateString()) return 'date-range-end';
+                    if (date > tempStartDate && date < tempEndDate) return 'date-range-middle';
+                  } else if (tempStartDate && date.toDateString() === tempStartDate.toDateString()) {
+                    return 'date-range-start';
+                  }
+                  return '';
+                }}
+              />
+            </div>
+            <div style={{ fontSize: '13px', color: '#4a5568', marginBottom: '15px' }}>
+              {tempStartDate && <span>Od: <strong>{tempStartDate.toISOString().split('T')[0]}</strong></span>}
+              {tempStartDate && tempEndDate && <span> → Do: <strong>{tempEndDate.toISOString().split('T')[0]}</strong></span>}
             </div>
 
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
@@ -476,15 +472,38 @@ export default function Povijest() {
             placeholder="Pretraži po broju računa ili prodavaču..."
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            style={{ 
-              width: '100%', 
-              padding: '12px 15px', 
-              borderRadius: '8px', 
+            style={{
+              width: '100%',
+              padding: '12px 15px',
+              borderRadius: '8px',
               border: '1px solid #e2e8f0',
               fontSize: '15px',
-              outline: 'none'
+              outline: 'none',
+              marginBottom: '10px'
             }}
           />
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <select value={filterPayment} onChange={e => setFilterPayment(e.target.value)}
+              style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '14px' }}>
+              <option value="">Sva plaćanja</option>
+              {uniquePaymentTypes.map(pt => <option key={pt} value={pt}>{pt}</option>)}
+            </select>
+            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+              style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '14px' }}>
+              <option value="">Svi statusi</option>
+              <option value="RACUN">AKTIVAN</option>
+              <option value="STORNO">STORNO</option>
+              <option value="RACUN_STORNIRAN">OTKAZANO</option>
+              <option value="STORNO_OTKAZANO">STORNO + OTKAZANO</option>
+            </select>
+            {(filterPayment || filterStatus) && (
+              <button onClick={() => { setFilterPayment(''); setFilterStatus(''); }}
+                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', background: '#f7fafc', cursor: 'pointer', fontSize: '13px' }}>
+                Resetiraj filtere
+              </button>
+            )}
+            <span style={{ color: '#718096', fontSize: '13px' }}>{filteredTransactions.length} / {transactions.filter(t => { const d = getSessionDate(t.createdAt); return d >= startDate && d <= endDate; }).length} transakcija</span>
+          </div>
         </div>
       )}
 
