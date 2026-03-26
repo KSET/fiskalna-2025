@@ -888,7 +888,6 @@ app.post("/api/reports", requireAuth, async (req, res) => {
 
 // GET trenutno odabrano prodajno mjesto
 app.get('/api/settings/active-location', requireAuth, async (req, res) => {
-  if (req.user.role !== "ADMIN") return res.status(403).json({ error: "Unauthorized" });
   try {
     const settings = await prisma.appSettings.findUnique({
       where: { id: 1 },
