@@ -109,7 +109,7 @@ export async function handleOrderFiscalization(order, options = {}) {
 
   // Prepare invoice data for FIRA
   const data = {
-    webshopOrderId: parseInt(order.code.replace(/\D/g, '').slice(-15)),
+    webshopOrderId: Date.now(),
     webshopType: "CUSTOM",
     webshopOrderNumber: order.code,
     invoiceType: process.env.FIRA_INVOICE_TYPE || 'PONUDA',
