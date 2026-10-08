@@ -444,6 +444,12 @@ app.post("/api/receipts", requireAuth, async (req, res) => {
       return res.status(500).json({ error: "Greška pri dešifriranju API ključa prodajnog mjesta." });
     }
 
+    // Rounding check prije izrade računa i fiskalizacije
+    const calculatedBrutto = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    if (Math.abs(calculatedBrutto - brutto) > 0.01) {
+      return res.status(400).json({ error: "Total amount mismatch." });
+    }
+
     // Create billing address if provided
     let billingAddressId = null;
     if (billingAddress) {
@@ -518,19 +524,23 @@ app.post("/api/receipts", requireAuth, async (req, res) => {
         },
       });
     }
-    const calculatedBrutto = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-    const firaResult = await handleOrderFiscalization({
-      id: receipt.id,
-      code: receipt.id,
-      email: receipt.billingAddress?.email,
-      createdAt: receipt.createdAt,
-      currency: receipt.currency,
-      paymentType: receipt.paymentType,
-      items: receipt.items,
-    }, { firaApiKey, prodajnoMjestoNaziv: appSettings.prodajnoMjesto.name });
+    let firaResult = null;
+    try {
+      firaResult = await handleOrderFiscalization({
+        id: receipt.id,
+        code: receipt.id,
+        email: receipt.billingAddress?.email,
+        createdAt: receipt.createdAt,
+        currency: receipt.currency,
+        paymentType: receipt.paymentType,
+        items: receipt.items,
+      }, { firaApiKey, prodajnoMjestoNaziv: appSettings.prodajnoMjesto.name });
+    } catch (fiscalError) {
+      console.error("FIRA fiscalization threw:", fiscalError);
+    }
 
-    if (firaResult && firaResult.invoiceNumber) {
+    if (firaResult?.invoiceNumber) {
       try {
         await prisma.receipt.update({
           where: { id: receipt.id },
@@ -562,10 +572,6 @@ app.post("/api/receipts", requireAuth, async (req, res) => {
       }
     }
 
-    //rounding check
-    if (Math.abs(calculatedBrutto - brutto) > 0.01) {
-        return res.status(400).json({ error: "Total amount mismatch." });
-    }
     res.status(201).json({ ...receipt, prodajnoMjestoNaziv: appSettings.prodajnoMjesto.name });
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -665,17 +671,22 @@ app.put("/api/receipts/:id/storno", requireAuth, async (req, res) => {
     }
 
     // Fiscalize storno receipt via FIRA
-    const firaResult = await handleOrderFiscalization({
-      id: stornoReceipt.id,
-      code: stornoReceipt.id,
-      email: null,
-      createdAt: stornoReceipt.createdAt,
-      currency: stornoReceipt.currency,
-      paymentType: stornoReceipt.paymentType,
-      items: stornoReceipt.items,
-    }, { firaApiKey, prodajnoMjestoNaziv: originalProdajnoMjesto.name });
+    let firaResult = null;
+    try {
+      firaResult = await handleOrderFiscalization({
+        id: stornoReceipt.id,
+        code: stornoReceipt.id,
+        email: null,
+        createdAt: stornoReceipt.createdAt,
+        currency: stornoReceipt.currency,
+        paymentType: stornoReceipt.paymentType,
+        items: stornoReceipt.items,
+      }, { firaApiKey, prodajnoMjestoNaziv: originalProdajnoMjesto.name });
+    } catch (fiscalError) {
+      console.error("FIRA storno fiscalization threw:", fiscalError);
+    }
 
-    if (firaResult && firaResult.invoiceNumber) {
+    if (firaResult?.invoiceNumber) {
       await prisma.receipt.update({
         where: { id: stornoReceipt.id },
         data: {

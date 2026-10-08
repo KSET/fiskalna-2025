@@ -140,8 +140,22 @@ export async function handleOrderFiscalization(order, options = {}) {
   const url = process.env.FIRA_API_URL || 'https://app.fira.finance/api/v1/webshop/order/custom';
   const headers = { 'FIRA-Api-Key': firaApiKey, 'Content-Type': 'application/json' };
   console.log(`FIRA request to ${url}: ${JSON.stringify({ headers: { ...headers, 'FIRA-Api-Key': '[REDACTED]' }, body: data }, null, 2)}`);
+  // Ponavljamo samo greške nastale prije slanja zahtjeva (DNS / spajanje),
+  // pa FIRA nikad ne može primiti isti račun dvaput.
+  const PRE_SEND_ERRORS = ['EAI_AGAIN', 'ENOTFOUND', 'ECONNREFUSED', 'UND_ERR_CONNECT_TIMEOUT'];
+  const maxAttempts = 3;
   try {
-    const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(data) });
+    let response;
+    for (let attempt = 1; ; attempt++) {
+      try {
+        response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(data) });
+        break;
+      } catch (e) {
+        if (attempt >= maxAttempts || !PRE_SEND_ERRORS.includes(e.cause?.code)) throw e;
+        console.log(`FIRA connection error ${e.cause.code} (attempt ${attempt}/${maxAttempts}), retrying`);
+        await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+      }
+    }
     console.log(`FIRA response status: ${response.status}`);
     const responseText = await response.text();
     console.log(`FIRA response body: ${responseText}`);
@@ -154,7 +168,8 @@ export async function handleOrderFiscalization(order, options = {}) {
       return null;
     }
   } catch (e) {
-    console.log(`FIRA invoice creation FAILED with exception: ${e.message}`);
+    const cause = e.cause ? ` (cause: ${e.cause.code || ''} ${e.cause.message || e.cause})` : '';
+    console.log(`FIRA invoice creation FAILED with exception: ${e.message}${cause}`);
     return null;
   }
 }
