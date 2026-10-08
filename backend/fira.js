@@ -154,7 +154,8 @@ export async function handleOrderFiscalization(order, options = {}) {
       return null;
     }
   } catch (e) {
-    console.log(`FIRA invoice creation FAILED with exception: ${e.message}`);
+    const cause = e.cause ? ` (cause: ${e.cause.code || ''} ${e.cause.message || e.cause})` : '';
+    console.log(`FIRA invoice creation FAILED with exception: ${e.message}${cause}`);
     return null;
   }
 }
