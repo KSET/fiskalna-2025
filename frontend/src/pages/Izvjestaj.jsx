@@ -100,19 +100,10 @@ export default function Izvjestaj() {
   useEffect(() => {
     const fetchCurrentSession = async () => {
       try {
-        const now = new Date();
-        const start = new Date();
-        if (now.getHours() < 6) {
-          start.setDate(start.getDate() - 1);
-        }
-        start.setHours(6, 0, 0, 0);
-
-        const fromStr = start.toISOString();
-        const toStr = now.toISOString();
-
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/receipts/range?from=${fromStr}&to=${toStr}`, { 
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/receipts/current-session`, {
           credentials: "include" 
         });
+        if (!res.ok) throw new Error(`Status: ${res.status}`);
         const data = await res.json();
         setReceipts(Array.isArray(data) ? data : []);
       } catch (error) {

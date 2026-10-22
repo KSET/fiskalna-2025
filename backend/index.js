@@ -240,6 +240,9 @@ app.delete("/api/articles/:id", requireAuth, async (req, res) => {
 
 // ========== RECEIPTS API ==========
 app.get("/api/receipts", requireAuth, async (req, res) => {
+  if (req.user.role !== "ADMIN") {
+    return res.status(403).json({ error: "Unauthorized" });
+  }
   try {
     const receipts = await prisma.receipt.findMany({
       include: { items: { include: { article: true } }, user: true },
@@ -253,18 +256,13 @@ app.get("/api/receipts", requireAuth, async (req, res) => {
 
 app.get('/api/receipts/current-session', requireAuth, async (req, res) => {
   try {
-    const now = new Date();
-    const start = new Date(now);
-
-    if (now.getHours() < 6) {
-      start.setDate(now.getDate() - 1);
-    }
-    start.setHours(6, 0, 0, 0);
+    const { start, end } = getSessionRange();
 
     const receipts = await prisma.receipt.findMany({
       where: {
         createdAt: {
           gte: start,
+          lte: end,
         },
       },
       include: { 
@@ -288,6 +286,9 @@ app.get('/api/receipts/current-session', requireAuth, async (req, res) => {
 // ========== RECEIPTS API UPDATES ==========
 
 app.get('/api/receipts/active-dates', requireAuth, async (req, res) => {
+  if (req.user.role !== "ADMIN") {
+    return res.status(403).json({ error: "Unauthorized" });
+  }
   try {
     const receipts = await prisma.receipt.findMany({
       select: { createdAt: true }
@@ -308,6 +309,9 @@ app.get('/api/receipts/active-dates', requireAuth, async (req, res) => {
 });
 
 app.get('/api/receipts/range', requireAuth, async (req, res) => {
+  if (req.user.role !== "ADMIN") {
+    return res.status(403).json({ error: "Unauthorized" });
+  }
   const { from, to } = req.query;
 
   try {
@@ -354,6 +358,12 @@ app.get("/api/receipts/:id/print", requireAuth, async (req, res) => {
 
     if (!receipt) {
       return res.status(404).json({ error: "Receipt not found" });
+    }
+    if (req.user.role !== "ADMIN") {
+      const { start, end } = getSessionRange();
+      if (receipt.createdAt < start || receipt.createdAt > end) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
     }
 
     const printData = {
@@ -444,86 +454,125 @@ app.post("/api/receipts", requireAuth, async (req, res) => {
       return res.status(500).json({ error: "Greška pri dešifriranju API ključa prodajnog mjesta." });
     }
 
-    // Rounding check prije izrade računa i fiskalizacije
-    const calculatedBrutto = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    if (Math.abs(calculatedBrutto - brutto) > 0.01) {
-      return res.status(400).json({ error: "Total amount mismatch." });
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: "At least one receipt item is required." });
     }
 
-    // Create billing address if provided
-    let billingAddressId = null;
-    if (billingAddress) {
-      const createdBillingAddress = await prisma.billingAddress.create({
-        data: billingAddress,
-      });
-      billingAddressId = createdBillingAddress.id;
+    const quantities = items.map((item) => Number(item.quantity));
+    if (quantities.some((quantity) => !Number.isFinite(quantity) || quantity <= 0)) {
+      return res.status(400).json({ error: "Receipt item quantities must be positive numbers." });
     }
 
-    // Create shipping address if provided
-    let shippingAddressId = null;
-    if (shippingAddress) {
-      const createdShippingAddress = await prisma.shippingAddress.create({
-        data: shippingAddress,
-      });
-      shippingAddressId = createdShippingAddress.id;
+    const articleIds = [...new Set(items.map((item) => item.articleId))];
+    if (articleIds.some((articleId) => typeof articleId !== "string" || !articleId)) {
+      return res.status(400).json({ error: "Every receipt item must reference a valid article." });
     }
-    
-    const receipt = await prisma.receipt.create({
-      data: {
-        invoiceNumber: receiptNumber || `RCN-${Date.now()}`,
-        webshopOrderId,
-        webshopType,
-        webshopEvent,
-        webshopOrderNumber,
-        invoiceType,
-        paymentType,
-        paymentGatewayCode,
-        paymentGatewayName,
-        userId: req.user.id,
-        brutto,
-        netto,
-        taxValue,
-        currency,
-        taxesIncluded,
-        dueDate: dueDate ? new Date(dueDate) : null,
-        validTo: validTo ? new Date(validTo) : null,
-        billingAddressId,
-        shippingAddressId,
-        customerLocale,
-        termsHR,
-        termsEN,
-        termsDE,
-        internalNote,
-        discountValue,
-        shippingCost,
-        prodajnoMjestoNaziv: appSettings.prodajnoMjesto.name,
-        prodajnoMjestoId: appSettings.prodajnoMjesto.id,
-        items: {
-          create: items.map((item) => ({
-            name: item.name,
-            description: item.description,
-            lineItemId: item.lineItemId,
-            quantity: item.quantity,
-            price: round2(item.price || 0),
-            taxRate: item.taxRate,
-            unit: item.unit,
-            articleId: item.articleId,
-          })),
-        },
-      },
-      include: { items: { include: { article: true } }, user: true },
+    const articles = await prisma.article.findMany({
+      where: { id: { in: articleIds }, active: true },
     });
+    const articlesById = new Map(articles.map((article) => [article.id, article]));
+    if (articlesById.size !== articleIds.length) {
+      return res.status(400).json({ error: "One or more articles are unavailable." });
+    }
 
-    // Auto-create transaction
-    if (!internalNote?.includes("STORNO")) {
-      await prisma.transaction.create({
-        data: {
-          receiptId: receipt.id,
-          userId: req.user.id,
-          amount: brutto,
-        },
+    const canonicalItems = items.map((item, index) => {
+      const article = articlesById.get(item.articleId);
+      return {
+        articleId: article.id,
+        name: article.name,
+        description: article.description,
+        lineItemId: item.lineItemId,
+        quantity: quantities[index],
+        price: round2(Number(article.price)),
+        taxRate: Number(article.taxRate),
+        unit: article.unit,
+      };
+    });
+    const calculatedBrutto = round2(canonicalItems.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    ));
+    const calculatedNetto = round2(canonicalItems.reduce(
+      (sum, item) => sum + (item.price * item.quantity) / (1 + item.taxRate / 100),
+      0
+    ));
+    const calculatedTaxValue = round2(calculatedBrutto - calculatedNetto);
+    if (
+      !Number.isFinite(Number(brutto)) ||
+      !Number.isFinite(Number(netto)) ||
+      !Number.isFinite(Number(taxValue)) ||
+      Math.abs(calculatedBrutto - Number(brutto)) > 0.01 ||
+      Math.abs(calculatedNetto - Number(netto)) > 0.01 ||
+      Math.abs(calculatedTaxValue - Number(taxValue)) > 0.01
+    ) {
+      return res.status(409).json({
+        error: "Cijene ili iznosi računa su se promijenili. Osvježite prodaju i pokušajte ponovno.",
       });
     }
+    const receipt = await prisma.$transaction(async (tx) => {
+      let billingAddressId = null;
+      if (billingAddress) {
+        const createdBillingAddress = await tx.billingAddress.create({
+          data: billingAddress,
+        });
+        billingAddressId = createdBillingAddress.id;
+      }
+
+      let shippingAddressId = null;
+      if (shippingAddress) {
+        const createdShippingAddress = await tx.shippingAddress.create({
+          data: shippingAddress,
+        });
+        shippingAddressId = createdShippingAddress.id;
+      }
+
+      const createdReceipt = await tx.receipt.create({
+        data: {
+          invoiceNumber: receiptNumber || `RCN-${Date.now()}`,
+          webshopOrderId,
+          webshopType,
+          webshopEvent,
+          webshopOrderNumber,
+          invoiceType,
+          paymentType,
+          paymentGatewayCode,
+          paymentGatewayName,
+          userId: req.user.id,
+          brutto: calculatedBrutto,
+          netto: calculatedNetto,
+          taxValue: calculatedTaxValue,
+          currency,
+          taxesIncluded,
+          dueDate: dueDate ? new Date(dueDate) : null,
+          validTo: validTo ? new Date(validTo) : null,
+          billingAddressId,
+          shippingAddressId,
+          customerLocale,
+          termsHR,
+          termsEN,
+          termsDE,
+          internalNote,
+          discountValue,
+          shippingCost,
+          prodajnoMjestoNaziv: appSettings.prodajnoMjesto.name,
+          prodajnoMjestoId: appSettings.prodajnoMjesto.id,
+          items: {
+            create: canonicalItems,
+          },
+        },
+        include: { items: { include: { article: true } }, user: true },
+      });
+
+      await tx.transaction.create({
+        data: {
+          receiptId: createdReceipt.id,
+          userId: req.user.id,
+          amount: calculatedBrutto,
+        },
+      });
+
+      return createdReceipt;
+    });
 
     let firaResult = null;
     try {
@@ -591,68 +640,80 @@ app.put("/api/receipts/:id/storno", requireAuth, async (req, res) => {
     if (!originalReceipt) {
       return res.status(404).json({ error: "Receipt not found" });
     }
+    if (req.user.role !== "ADMIN") {
+      const { start, end } = getSessionRange();
+      if (originalReceipt.createdAt < start || originalReceipt.createdAt > end) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+    }
 
-    // Mark original as cancelled
-    await prisma.receipt.update({
-      where: { id },
-      data: { status: 'RACUN_STORNIRAN' },
-    });
+    const stornoReceipt = await prisma.$transaction(async (tx) => {
+      const cancellation = await tx.receipt.updateMany({
+        where: { id, status: "RACUN" },
+        data: { status: "RACUN_STORNIRAN" },
+      });
+      if (cancellation.count !== 1) {
+        const error = new Error("Receipt has already been cancelled");
+        error.code = "RECEIPT_ALREADY_CANCELLED";
+        throw error;
+      }
 
-    // Create cancellation receipt with negative values and unique receipt number
-    const stornoReceipt = await prisma.receipt.create({
-      data: {
-        invoiceNumber: `RCN-${Date.now()}`,
-        status: 'STORNO',
-        webshopOrderId: originalReceipt.webshopOrderId,
-        webshopType: originalReceipt.webshopType,
-        webshopEvent: originalReceipt.webshopEvent,
-        webshopOrderNumber: originalReceipt.webshopOrderNumber,
-        invoiceType: originalReceipt.invoiceType,
-        paymentType: originalReceipt.paymentType,
-        paymentGatewayCode: originalReceipt.paymentGatewayCode,
-        paymentGatewayName: originalReceipt.paymentGatewayName,
-        userId: req.user.id,
-        brutto: -originalReceipt.brutto,
-        netto: -originalReceipt.netto,
-        taxValue: -originalReceipt.taxValue,
-        currency: originalReceipt.currency,
-        taxesIncluded: originalReceipt.taxesIncluded,
-        dueDate: originalReceipt.dueDate,
-        validTo: originalReceipt.validTo,
-        billingAddressId: originalReceipt.billingAddressId,
-        shippingAddressId: originalReceipt.shippingAddressId,
-        customerLocale: originalReceipt.customerLocale,
-        termsHR: originalReceipt.termsHR,
-        termsEN: originalReceipt.termsEN,
-        termsDE: originalReceipt.termsDE,
-        internalNote: `STORNO of ${originalReceipt.invoiceNumber}`,
-        discountValue: originalReceipt.discountValue,
-        shippingCost: originalReceipt.shippingCost,
-        prodajnoMjestoNaziv: originalReceipt.prodajnoMjestoNaziv,
-        prodajnoMjestoId: originalReceipt.prodajnoMjestoId,
-        items: {
-          create: originalReceipt.items.map((item) => ({
-            name: item.name,
-            description: item.description,
-            lineItemId: item.lineItemId,
-            quantity: item.quantity,
-            price: round2(-item.price || 0),
-            taxRate: item.taxRate,
-            unit: item.unit,
-            articleId: item.articleId,
-          })),
+      const createdReceipt = await tx.receipt.create({
+        data: {
+          invoiceNumber: `RCN-${Date.now()}`,
+          status: 'STORNO',
+          webshopOrderId: originalReceipt.webshopOrderId,
+          webshopType: originalReceipt.webshopType,
+          webshopEvent: originalReceipt.webshopEvent,
+          webshopOrderNumber: originalReceipt.webshopOrderNumber,
+          invoiceType: originalReceipt.invoiceType,
+          paymentType: originalReceipt.paymentType,
+          paymentGatewayCode: originalReceipt.paymentGatewayCode,
+          paymentGatewayName: originalReceipt.paymentGatewayName,
+          userId: req.user.id,
+          brutto: -originalReceipt.brutto,
+          netto: -originalReceipt.netto,
+          taxValue: -originalReceipt.taxValue,
+          currency: originalReceipt.currency,
+          taxesIncluded: originalReceipt.taxesIncluded,
+          dueDate: originalReceipt.dueDate,
+          validTo: originalReceipt.validTo,
+          billingAddressId: originalReceipt.billingAddressId,
+          shippingAddressId: originalReceipt.shippingAddressId,
+          customerLocale: originalReceipt.customerLocale,
+          termsHR: originalReceipt.termsHR,
+          termsEN: originalReceipt.termsEN,
+          termsDE: originalReceipt.termsDE,
+          internalNote: `STORNO of ${originalReceipt.invoiceNumber}`,
+          discountValue: originalReceipt.discountValue,
+          shippingCost: originalReceipt.shippingCost,
+          prodajnoMjestoNaziv: originalReceipt.prodajnoMjestoNaziv,
+          prodajnoMjestoId: originalReceipt.prodajnoMjestoId,
+          items: {
+            create: originalReceipt.items.map((item) => ({
+              name: item.name,
+              description: item.description,
+              lineItemId: item.lineItemId,
+              quantity: item.quantity,
+              price: round2(-item.price || 0),
+              taxRate: item.taxRate,
+              unit: item.unit,
+              articleId: item.articleId,
+            })),
+          },
         },
-      },
-      include: { items: { include: { article: true } } },
-    });
+        include: { items: { include: { article: true } } },
+      });
 
-    // Create transaction for storno
-    await prisma.transaction.create({
-      data: {
-        receiptId: stornoReceipt.id,
-        userId: req.user.id,
-        amount: -originalReceipt.brutto,
-      },
+      await tx.transaction.create({
+        data: {
+          receiptId: createdReceipt.id,
+          userId: req.user.id,
+          amount: -originalReceipt.brutto,
+        },
+      });
+
+      return createdReceipt;
     });
 
     // Dohvati prodajno mjesto originalnog računa
@@ -705,15 +766,30 @@ app.put("/api/receipts/:id/storno", requireAuth, async (req, res) => {
 
     res.json(stornoReceipt);
   } catch (error) {
+    if (error.code === "RECEIPT_ALREADY_CANCELLED") {
+      return res.status(409).json({ error: error.message });
+    }
     res.status(400).json({ error: error.message });
   }
 });
 
 app.put("/api/receipts/:id", requireAuth, async (req, res) => {
+  if (req.user.role !== "ADMIN") {
+    return res.status(403).json({ error: "Unauthorized" });
+  }
   try {
     const { id } = req.params;
+    const existingReceipt = await prisma.receipt.findUnique({
+      where: { id },
+      select: { id: true, status: true, jir: true, userId: true },
+    });
+    if (!existingReceipt) {
+      return res.status(404).json({ error: "Receipt not found" });
+    }
+    if (existingReceipt.status !== "RACUN" || existingReceipt.jir) {
+      return res.status(409).json({ error: "Fiscalized or cancelled receipts cannot be edited." });
+    }
     const { 
-      invoiceNumber, 
       webshopOrderId,
       webshopType,
       webshopEvent,
@@ -740,93 +816,118 @@ app.put("/api/receipts/:id", requireAuth, async (req, res) => {
       shippingCost,
       items 
     } = req.body;
-    
-    // Create or update billing address if provided
-    let billingAddressId = null;
-    if (billingAddress) {
-      if (billingAddress.id) {
-        await prisma.billingAddress.update({
-          where: { id: billingAddress.id },
-          data: billingAddress,
-        });
-        billingAddressId = billingAddress.id;
-      } else {
-        const createdBillingAddress = await prisma.billingAddress.create({
-          data: billingAddress,
-        });
-        billingAddressId = createdBillingAddress.id;
-      }
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: "At least one receipt item is required." });
     }
 
-    // Create or update shipping address if provided
-    let shippingAddressId = null;
-    if (shippingAddress) {
-      if (shippingAddress.id) {
-        await prisma.shippingAddress.update({
-          where: { id: shippingAddress.id },
-          data: shippingAddress,
-        });
-        shippingAddressId = shippingAddress.id;
-      } else {
-        const createdShippingAddress = await prisma.shippingAddress.create({
-          data: shippingAddress,
-        });
-        shippingAddressId = createdShippingAddress.id;
+    const receipt = await prisma.$transaction(async (tx) => {
+      const editableReceipt = await tx.receipt.updateMany({
+        where: { id, status: "RACUN", jir: null },
+        data: { status: "RACUN" },
+      });
+      if (editableReceipt.count !== 1) {
+        const error = new Error("Fiscalized or cancelled receipts cannot be edited.");
+        error.code = "RECEIPT_NOT_EDITABLE";
+        throw error;
       }
-    }
-    
-    // Remove old items
-    await prisma.receiptItem.deleteMany({ where: { receiptId: id } });
-    
-    const receipt = await prisma.receipt.update({
-      where: { id },
-      data: {
-        webshopType,
-        webshopEvent,
-        webshopOrderNumber,
-        invoiceType,
-        paymentType,
-        paymentGatewayCode,
-        paymentGatewayName,
-        brutto,
-        netto,
-        taxValue,
-        currency,
-        taxesIncluded,
-        dueDate: dueDate ? new Date(dueDate) : null,
-        validTo: validTo ? new Date(validTo) : null,
-        billingAddressId,
-        shippingAddressId,
-        customerLocale,
-        termsHR,
-        termsEN,
-        termsDE,
-        internalNote,
-        discountValue,
-        shippingCost,
-        items: {
-          create: items.map((item) => ({
-            name: item.name,
-            description: item.description,
-            lineItemId: item.lineItemId,
-            quantity: item.quantity,
-            price: round2(item.price || 0),
-            taxRate: item.taxRate,
-            unit: item.unit,
-            articleId: item.articleId,
-          })),
+
+      let billingAddressId = null;
+      if (billingAddress) {
+        if (billingAddress.id) {
+          await tx.billingAddress.update({
+            where: { id: billingAddress.id },
+            data: billingAddress,
+          });
+          billingAddressId = billingAddress.id;
+        } else {
+          const createdBillingAddress = await tx.billingAddress.create({
+            data: billingAddress,
+          });
+          billingAddressId = createdBillingAddress.id;
+        }
+      }
+
+      let shippingAddressId = null;
+      if (shippingAddress) {
+        if (shippingAddress.id) {
+          await tx.shippingAddress.update({
+            where: { id: shippingAddress.id },
+            data: shippingAddress,
+          });
+          shippingAddressId = shippingAddress.id;
+        } else {
+          const createdShippingAddress = await tx.shippingAddress.create({
+            data: shippingAddress,
+          });
+          shippingAddressId = createdShippingAddress.id;
+        }
+      }
+
+      await tx.receiptItem.deleteMany({ where: { receiptId: id } });
+      const updatedReceipt = await tx.receipt.update({
+        where: { id },
+        data: {
+          webshopType,
+          webshopEvent,
+          webshopOrderNumber,
+          invoiceType,
+          paymentType,
+          paymentGatewayCode,
+          paymentGatewayName,
+          brutto,
+          netto,
+          taxValue,
+          currency,
+          taxesIncluded,
+          dueDate: dueDate ? new Date(dueDate) : null,
+          validTo: validTo ? new Date(validTo) : null,
+          billingAddressId,
+          shippingAddressId,
+          customerLocale,
+          termsHR,
+          termsEN,
+          termsDE,
+          internalNote,
+          discountValue,
+          shippingCost,
+          items: {
+            create: items.map((item) => ({
+              name: item.name,
+              description: item.description,
+              lineItemId: item.lineItemId,
+              quantity: item.quantity,
+              price: round2(item.price || 0),
+              taxRate: item.taxRate,
+              unit: item.unit,
+              articleId: item.articleId,
+            })),
+          },
         },
-      },
-      include: { items: { include: { article: true } } },
+        include: { items: { include: { article: true } } },
+      });
+
+      await tx.transaction.upsert({
+        where: { receiptId: id },
+        update: { amount: brutto },
+        create: { receiptId: id, userId: existingReceipt.userId, amount: brutto },
+      });
+
+      return updatedReceipt;
     });
     res.json(receipt);
   } catch (error) {
+    if (error.code === "RECEIPT_NOT_EDITABLE") {
+      return res.status(409).json({ error: error.message });
+    }
     res.status(400).json({ error: error.message });
   }
 });
 
 // ========== TRANSACTIONS API ==========
 app.get("/api/transactions", requireAuth, async (req, res) => {
+  if (req.user.role !== "ADMIN") {
+    return res.status(403).json({ error: "Unauthorized" });
+  }
   const { from, to } = req.query;
   
   console.log("\n========================================");
@@ -940,13 +1041,10 @@ app.put('/api/settings/active-location', requireAuth, async (req, res) => {
 
 // GET all prodajna mjesta
 app.get('/api/prodajna-mjesta', requireAuth, async (req, res) => {
+  if (req.user.role !== "ADMIN") return res.status(403).json({ error: "Unauthorized" });
   try {
     const locations = await prisma.prodajnoMjesto.findMany();
-    const safeLocations = locations.map(loc => {
-      try {
-        return { ...loc, firaApiKey: decrypt(loc.firaApiKey) };
-      } catch { return { ...loc, firaApiKey: "DECRYPTION_ERROR" }; }
-    });
+    const safeLocations = locations.map(loc => ({ ...loc, firaApiKey: "********" }));
     res.json(safeLocations);
   } catch (error) {
     res.status(500).json({ error: "Greška" });
@@ -955,6 +1053,7 @@ app.get('/api/prodajna-mjesta', requireAuth, async (req, res) => {
 
 // POST new prodajno mjesto
 app.post('/api/prodajna-mjesta', requireAuth, async (req, res) => {
+  if (req.user.role !== "ADMIN") return res.status(403).json({ error: "Unauthorized" });
   try {
     const { name, businessSpace, paymentDevice, firaApiKey } = req.body;
 
@@ -986,6 +1085,7 @@ app.post('/api/prodajna-mjesta', requireAuth, async (req, res) => {
 
 // PUT (update) prodajno mjesto
 app.put('/api/prodajna-mjesta/:id', requireAuth, async (req, res) => {
+  if (req.user.role !== "ADMIN") return res.status(403).json({ error: "Unauthorized" });
   const { id } = req.params;
   const { name, businessSpace, paymentDevice, firaApiKey } = req.body;
   try {
@@ -1005,6 +1105,7 @@ app.put('/api/prodajna-mjesta/:id', requireAuth, async (req, res) => {
 
 // DELETE prodajno mjesto
 app.delete('/api/prodajna-mjesta/:id', requireAuth, async (req, res) => {
+  if (req.user.role !== "ADMIN") return res.status(403).json({ error: "Unauthorized" });
   const { id } = req.params;
   try {
     await prisma.prodajnoMjesto.delete({
