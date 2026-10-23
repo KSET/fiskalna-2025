@@ -84,9 +84,13 @@ export default function Artikli() {
         resetForm();
         setShowForm(false);
         fetchArticles();
+      } else {
+        const data = await response.json().catch(() => ({}));
+        alert(data.error || "Greška pri spremanju artikla.");
       }
     } catch (error) {
       console.error("Error saving article:", error);
+      alert("Greška pri spremanju artikla.");
     }
   };
 

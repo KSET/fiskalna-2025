@@ -131,6 +131,13 @@ app.get("/protected", requireAuth, (req, res) => {
 });
 
 // ========== ARTICLES API ==========
+const duplicateArticleMessage = (error) => {
+  const target = `${error.message} ${JSON.stringify(error.meta ?? {})}`;
+  if (target.includes("productCode")) return "Artikl s tom šifrom već postoji.";
+  if (target.includes("name")) return "Artikl s tim nazivom već postoji.";
+  return "Artikl s tim podacima već postoji.";
+};
+
 app.get("/api/articles", requireAuth, async (req, res) => {
   try {
 
@@ -193,6 +200,9 @@ app.post("/api/articles", requireAuth, async (req, res) => {
 
     res.status(201).json(article);
   } catch (error) {
+    if (error.code === "P2002") {
+      return res.status(409).json({ error: duplicateArticleMessage(error) });
+    }
     res.status(400).json({ error: error.message });
   }
 });
@@ -220,6 +230,9 @@ app.put("/api/articles/:id", requireAuth, async (req, res) => {
     });
     res.json(article);
   } catch (error) {
+    if (error.code === "P2002") {
+      return res.status(409).json({ error: duplicateArticleMessage(error) });
+    }
     console.error("Update Article Error:", error);
     res.status(400).json({ error: error.message });
   }
