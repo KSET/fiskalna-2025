@@ -152,7 +152,7 @@ export default function Izvjestaj() {
     if (receipt.items) {
       const sign = receipt.status === 'STORNO' ? -1 : 1;
       receipt.items.forEach(item => {
-        const name = item.article?.name || "N/A";
+        const name = item.name || item.article?.name || "N/A";
         const qty = sign * parseFloat(item.quantity);
         const total = qty * Math.abs(parseFloat(item.price));
 

@@ -279,7 +279,7 @@ app.get('/api/receipts/current-session', requireAuth, async (req, res) => {
         },
       },
       include: { 
-        items: true,
+        items: { include: { article: true } },
         user: {
           select: {
             name: true 
