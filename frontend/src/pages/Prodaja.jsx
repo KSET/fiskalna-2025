@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import "../styles/Pages.css";
 import ReceiptPrintButton from "./admin/Racun";
@@ -21,6 +21,7 @@ export default function Prodaja() {
   const [offlineCount, setOfflineCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const cartRef = useRef(null);
   
   const { totalBrutto, totalNetto, totalTax } = useMemo(() => {
     const brutto = selectedItems.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0);
@@ -239,7 +240,7 @@ export default function Prodaja() {
   return (
     <div className="page-container">
 <style>{`
-  @media (min-width: 768px) {
+  @media (min-width: 769px) {
     .prodaja-layout {
       display: grid;
       grid-template-columns: 1fr 450px;
@@ -389,16 +390,16 @@ export default function Prodaja() {
           <h2>{categoryId ? `Artikli u kategoriji ${categories.find(c => c.id === categoryId)?.name}` : "Svi artikli"}</h2>
           <div className="grid">
             {filteredArticles.map(article => (
-              <div key={article.id} className="article-card" onClick={() => addItem(article)} style={{ cursor: 'pointer' }}>
+              <button key={article.id} type="button" className="article-card" onClick={() => addItem(article)}>
                 <h3>{article.name}</h3>
                 <p className="code">Kod: {article.productCode}</p>
                 <p className="price"><span className="currency">{article.price.toFixed(2)}</span></p>
-              </div>
+              </button>
             ))}
           </div>
         </div>
 
-        <div className="cart" style={{ height: 'auto', overflow: 'visible' }}>
+        <div className="cart" id="sales-cart" ref={cartRef} style={{ height: 'auto', overflow: 'visible' }}>
           <h2>Košarica</h2>
           {selectedItems.length === 0 ? (
             <p className="empty-cart">Košarica je prazna</p>
@@ -499,6 +500,16 @@ export default function Prodaja() {
             </>
           )}
         </div>
+      </div>
+      <div className="mobile-cart-bar">
+        <span>{selectedItems.reduce((count, item) => count + item.quantity, 0)} artikala</span>
+        <strong>{totalBrutto.toFixed(2)} €</strong>
+        <button
+          type="button"
+          onClick={() => cartRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+        >
+          Košarica
+        </button>
       </div>
     </div>
   );

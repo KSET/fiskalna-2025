@@ -252,7 +252,7 @@ export default function Povijest() {
   if (loading) return <div style={{ padding: '40px' }}>Učitavanje...</div>;
 
   return (
-    <div style={{ padding: '20px', backgroundColor: '#fdfdfd', minHeight: '100vh', color: '#333' }}>
+    <div className="history-page" style={{ padding: '20px', backgroundColor: '#fdfdfd', minHeight: '100vh', color: '#333' }}>
       
       <div style={{ marginBottom: '20px' }}>
         <h1 style={{ margin: 0, fontSize: '28px', color: '#1a202c' }}>Izvještaji</h1>

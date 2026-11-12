@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import "./Sidebar.css";
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen = false, onNavigate = () => {} }) {
   const location = useLocation();
   const [user, setUser] = useState(null);
   const [categories, setCategories] = useState([]);
@@ -32,7 +32,7 @@ export default function Sidebar() {
   };
 
   return (
-    <div className="sidebar">
+    <aside id="app-navigation" className={`sidebar ${isOpen ? "sidebar--open" : ""}`}>
       <div className="sidebar-header">
         <h1>Fiskalna</h1>
         {user && <p className="user-name">{user.name}</p>}
@@ -43,6 +43,7 @@ export default function Sidebar() {
           <h3 className="section-title">Prodaja</h3>
           <Link
             to="/prodaja"
+            onClick={onNavigate}
             className={`nav-link ${isActive("/prodaja") && !location.search ? "active" : ""}`}
           >
             Sve
@@ -51,6 +52,7 @@ export default function Sidebar() {
             <Link
               key={cat.id}
               to={`/prodaja?category=${cat.id}`}
+              onClick={onNavigate}
               className={`nav-link ${location.search === `?category=${cat.id}` ? "active" : ""}`}
               style={{ paddingLeft: '2rem', fontSize: '0.9em' }}
             >
@@ -59,12 +61,14 @@ export default function Sidebar() {
           ))}
           <Link
             to="/racuni"
+            onClick={onNavigate}
             className={`nav-link ${isActive("/racuni") ? "active" : ""}`}
           >
             Računi
           </Link>
           <Link
             to="/izvjestaj"
+            onClick={onNavigate}
             className={`nav-link ${isActive("/izvjestaj") ? "active" : ""}`}
           >
             Izvještaj
@@ -76,6 +80,7 @@ export default function Sidebar() {
             <h3 className="section-title">Admin</h3>
             <Link
               to="/admin/ukupni-izvjestaj"
+              onClick={onNavigate}
               className={`nav-link ${
                 isActive("/admin/ukupni-izvjestaj") ? "active" : ""
               }`}
@@ -84,6 +89,7 @@ export default function Sidebar() {
             </Link>
             <Link
               to="/admin/artikli"
+              onClick={onNavigate}
               className={`nav-link ${
                 isActive("/admin/artikli") ? "active" : ""
               }`}
@@ -92,18 +98,21 @@ export default function Sidebar() {
             </Link>
             <Link
               to="/admin/kategorije"
+              onClick={onNavigate}
               className={`nav-link ${isActive("/admin/kategorije") ? "active" : ""}`}
             >
               Kategorije
             </Link>
             <Link
               to="/admin/prodajna-mjesta"
+              onClick={onNavigate}
               className={`nav-link ${isActive("/admin/prodajna-mjesta") ? "active" : ""}`}
             >
               Prodajna mjesta
             </Link>
             <Link
               to="/admin/povijest"
+              onClick={onNavigate}
               className={`nav-link ${
                 isActive("/admin/povijest") ? "active" : ""
               }`}
@@ -112,6 +121,7 @@ export default function Sidebar() {
             </Link>
             <Link
               to="/admin/korisnici"
+              onClick={onNavigate}
               className={`nav-link ${
                 isActive("/admin/korisnici") ? "active" : ""
               }`}
@@ -127,6 +137,6 @@ export default function Sidebar() {
           Odjava
         </button>
       </div>
-    </div>
+    </aside>
   );
 }

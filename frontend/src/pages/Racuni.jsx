@@ -97,7 +97,7 @@ export default function Racuni() {
   return (
     <>
     <div className="page-container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+      <div className="page-heading-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
         <h1>Računi (Trenutna sesija)</h1>
         <button onClick={fetchReceipts} className="btn-small" style={{ background: '#eee' }}>Osvježi ↻</button>
       </div>

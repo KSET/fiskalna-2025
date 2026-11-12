@@ -138,7 +138,8 @@
   }
 
   .nav-link {
-    padding: 8px 12px;
-    font-size: 13px;
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 14px;
   }
 }
