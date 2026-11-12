@@ -11,6 +11,12 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  --border-subtle: #e1e5ea;
+  --border-control: #cbd2da;
+  --border-focus: #ff8c04;
+  --surface: #ffffff;
+  --radius-control: 8px;
 }
 
 * {
@@ -71,11 +77,31 @@ button:hover {
 }
 button:focus,
 button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  outline: 3px solid rgba(255, 140, 4, 0.55);
+  outline-offset: 2px;
 }
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-control);
+  color: inherit;
+  font-family: inherit;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(255, 140, 4, 0.16);
+}
+
+a:focus-visible {
+  outline: 2px solid rgba(255, 140, 4, 0.65);
+  outline-offset: 2px;
+  border-radius: 3px;
 }
 
 @media (prefers-color-scheme: light) {

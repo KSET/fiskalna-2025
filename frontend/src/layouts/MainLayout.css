@@ -91,7 +91,7 @@
 
   .main-content {
     margin-left: 0;
-    padding: 16px 12px calc(88px + env(safe-area-inset-bottom));
+    padding: 16px 12px;
     width: 100%;
   }
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import "../styles/Pages.css";
 import ReceiptPrintButton from "./admin/Racun";
@@ -21,7 +21,6 @@ export default function Prodaja() {
   const [offlineCount, setOfflineCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const cartRef = useRef(null);
   
   const { totalBrutto, totalNetto, totalTax } = useMemo(() => {
     const brutto = selectedItems.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0);
@@ -399,7 +398,7 @@ export default function Prodaja() {
           </div>
         </div>
 
-        <div className="cart" id="sales-cart" ref={cartRef} style={{ height: 'auto', overflow: 'visible' }}>
+        <div className="cart" style={{ height: 'auto', overflow: 'visible' }}>
           <h2>Košarica</h2>
           {selectedItems.length === 0 ? (
             <p className="empty-cart">Košarica je prazna</p>
@@ -500,16 +499,6 @@ export default function Prodaja() {
             </>
           )}
         </div>
-      </div>
-      <div className="mobile-cart-bar">
-        <span>{selectedItems.reduce((count, item) => count + item.quantity, 0)} artikala</span>
-        <strong>{totalBrutto.toFixed(2)} €</strong>
-        <button
-          type="button"
-          onClick={() => cartRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-        >
-          Košarica
-        </button>
       </div>
     </div>
   );
